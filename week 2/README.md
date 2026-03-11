@@ -12,6 +12,11 @@
 | Чуканов Николай | Frontend-разработчик |
 | Архангельский Александр | Backend-разработчик |
 
+
+**Ссылка на презентацию:**
+**https://docs.google.com/presentation/d/1JGZPx3b8a01DwsTo0QL0k3rqpL1QXc1Bnkjl9g7QGHs/edit?slide=id.p5#slide=id.p5**
+
+
 ---
 
 ## Проект №1: StudentPass
