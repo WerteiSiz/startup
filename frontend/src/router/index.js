@@ -91,6 +91,11 @@ const routes = [
         component: ManagerCreateDiscountView,
       },
       {
+        path: 'discounts/:id/edit',
+        name: 'manager-discount-edit',
+        component: ManagerCreateDiscountView,
+      },
+      {
         path: 'statistics',
         name: 'manager-statistics',
         component: ManagerStatisticsView,

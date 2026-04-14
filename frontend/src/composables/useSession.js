@@ -24,16 +24,19 @@ function writeStorage() {
   else localStorage.removeItem(STORAGE_KEY)
 }
 
-/**
- * Демо-роли по почте:
- * admin@* — администратор
- * manager@* — менеджер компании
- */
 export function roleFromEmail(email) {
   const e = String(email).trim().toLowerCase()
   if (e.startsWith('admin@')) return 'admin'
   if (e.startsWith('manager@')) return 'manager'
   return 'user'
+}
+
+function roleFromCredentials(login, password) {
+  const l = String(login).trim().toLowerCase()
+  const p = String(password).trim().toLowerCase()
+  if (l === 'admin' && p === 'admin') return 'admin'
+  if (l === 'manager' && p === 'manager') return 'manager'
+  return null
 }
 
 export function useSession() {
@@ -43,14 +46,20 @@ export function useSession() {
   const isAdmin = computed(() => user.value?.role === 'admin')
   const isManager = computed(() => user.value?.role === 'manager')
 
-  function login({ email, displayName }) {
-    const e = email.trim()
+  function login({ email, password = '', displayName }) {
+    const loginValue = String(email).trim()
+    const roleByCredentials = roleFromCredentials(loginValue, password)
+    const role = roleByCredentials || roleFromEmail(loginValue)
+    const profileNameByRole = role === 'admin' ? 'Администратор' : role === 'manager' ? 'Компания Manager' : null
+    const fallbackDisplayName = loginValue.includes('@') ? loginValue.split('@')[0] : loginValue
+
     user.value = {
-      email: e,
-      displayName: displayName?.trim() || e.split('@')[0],
-      role: roleFromEmail(e),
+      email: loginValue.includes('@') ? loginValue : `${loginValue || role}@studentpass.local`,
+      displayName: displayName?.trim() || profileNameByRole || fallbackDisplayName || 'Пользователь',
+      role,
     }
     writeStorage()
+    return user.value
   }
 
   function register({ email, name }) {

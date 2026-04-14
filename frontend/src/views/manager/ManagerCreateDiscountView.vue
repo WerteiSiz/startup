@@ -1,17 +1,45 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { managerCategories } from '../../data/managerMock'
+import { useManagerDiscounts } from '../../composables/useManagerDiscounts'
 
-const title = ref('15% скидка на все меню')
-const description = ref('Подробное описание скидки и условий получения...')
-const percent = ref(15)
-const category = ref('Еда и кафе')
-const linkUrl = ref('')
-const emoji = ref('🍔')
+const route = useRoute()
+const router = useRouter()
+const { getById, createDiscount, updateDiscount } = useManagerDiscounts()
+
+const discountId = computed(() => String(route.params.id || ''))
+const editingDiscount = computed(() => (discountId.value ? getById(discountId.value) : null))
+const isEditMode = computed(() => !!editingDiscount.value)
+
+const title = ref(editingDiscount.value?.title || '15% скидка на все меню')
+const description = ref(
+  editingDiscount.value?.description || 'Подробное описание скидки и условий получения...',
+)
+const percent = ref(editingDiscount.value?.percentNumber ?? 15)
+const category = ref(editingDiscount.value?.category || managerCategories[0])
+const linkUrl = ref(editingDiscount.value?.linkUrl || '')
+const emoji = ref(editingDiscount.value?.emoji || '🍔')
 
 const previewTitle = computed(() => title.value.trim() || 'Название скидки')
 const previewDesc = computed(() => description.value.trim() || 'Описание скидки...')
 const previewEmoji = computed(() => emoji.value.trim() || '📋')
+
+function submitForm() {
+  const payload = {
+    title: title.value,
+    description: description.value,
+    percentNumber: percent.value,
+    category: category.value,
+    linkUrl: linkUrl.value,
+    emoji: emoji.value,
+  }
+
+  if (isEditMode.value) updateDiscount(discountId.value, payload)
+  else createDiscount(payload)
+
+  router.push({ name: 'manager-discounts' })
+}
 </script>
 
 <template>
@@ -20,14 +48,20 @@ const previewEmoji = computed(() => emoji.value.trim() || '📋')
       <div class="admin-page-title">
         <span class="mgr-create-icon" aria-hidden="true">+</span>
         <div>
-          <h1>Создать скидку</h1>
-          <p>Добавьте новое предложение для студентов</p>
+          <h1>{{ isEditMode ? 'Редактировать скидку' : 'Создать скидку' }}</h1>
+          <p>
+            {{
+              isEditMode
+                ? 'Обновите условия предложения и сохраните изменения'
+                : 'Добавьте новое предложение для студентов'
+            }}
+          </p>
         </div>
       </div>
     </header>
 
     <div class="mgr-form-card">
-      <form class="mgr-form" @submit.prevent>
+      <form class="mgr-form" @submit.prevent="submitForm">
         <div class="mgr-form__row">
           <label class="mgr-form-label" for="offer-title">📄 Название предложения</label>
           <input
@@ -84,7 +118,9 @@ const previewEmoji = computed(() => emoji.value.trim() || '📋')
           <input id="offer-emoji" v-model="emoji" type="text" class="mgr-form-input mgr-form-input--emoji" maxlength="4" />
         </div>
 
-        <button type="submit" class="admin-btn admin-btn--primary mgr-form-submit">Опубликовать скидку</button>
+        <button type="submit" class="admin-btn admin-btn--primary mgr-form-submit">
+          {{ isEditMode ? 'Сохранить изменения' : 'Опубликовать скидку' }}
+        </button>
       </form>
 
       <div class="mgr-preview-block">

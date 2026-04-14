@@ -209,35 +209,6 @@ const tamSamSom = [
       </section>
     </main>
 
-    <footer class="cat-footer">
-      <div class="cat-container cat-footer-grid">
-        <div>
-          <RouterLink class="cat-logo" :to="{ name: 'home' }">StudentPass</RouterLink>
-          <p>
-            Единая платформа студенческих скидок на профессиональный софт и AI-сервисы для студентов IT и дизайна.
-          </p>
-        </div>
-        <div>
-          <h4>Навигация</h4>
-          <RouterLink :to="{ name: 'home' }">Главная</RouterLink>
-          <RouterLink :to="{ name: 'catalog' }">Каталог скидок</RouterLink>
-          <RouterLink :to="{ name: 'how' }">Как это работает</RouterLink>
-        </div>
-        <div>
-          <h4>Категории</h4>
-          <a href="#">AI-инструменты</a>
-          <a href="#">Дизайн</a>
-          <a href="#">Разработка</a>
-          <a href="#">Продуктивность</a>
-          <a href="#">Офис</a>
-        </div>
-      </div>
-      <div class="cat-container how-footer-bar">
-        <p class="how-copy">© 2025 StudentPass. Команда №4 — Стартап в ИТ.</p>
-        <p class="how-copy">Сделано с 💜 для студентов РФ</p>
-      </div>
-    </footer>
-
     <button type="button" class="how-fab" aria-label="Помощь">?</button>
   </div>
 </template>

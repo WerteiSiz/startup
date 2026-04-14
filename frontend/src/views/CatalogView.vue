@@ -3,12 +3,13 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import SitePublicHeader from '../components/SitePublicHeader.vue'
 import { getCatalogItems } from '../services/catalogService'
+import { managerCategories } from '../data/managerMock'
 
-const categories = ['Все', 'AI-инструменты', 'Дизайн', 'Разработка', 'Продуктивность', 'Офис', 'Облако']
+const categories = ['Все', ...managerCategories]
 
 const search = ref('')
 const sortBy = ref('По умолчанию')
-const onlyFree = ref(true)
+const onlyFree = ref(false)
 const activeCategory = ref('Все')
 const items = ref([])
 
@@ -50,7 +51,7 @@ onMounted(async () => {
     <SitePublicHeader />
 
     <main class="cat-container cat-main">
-      <span class="cat-counter">16 скидок в каталоге</span>
+      <span class="cat-counter">{{ items.length }} скидок в каталоге</span>
       <h1>Каталог скидок</h1>
       <p class="cat-subtitle">Легальные студенческие скидки на профессиональный софт и AI-сервисы</p>
 
@@ -122,27 +123,5 @@ onMounted(async () => {
       </section>
     </main>
 
-    <footer class="cat-footer">
-      <div class="cat-container cat-footer-grid">
-        <div>
-          <div class="cat-logo">StudentPass</div>
-          <p>Единая платформа студенческих скидок на профессиональный софт и AI-сервисы для студентов IT и дизайна.</p>
-        </div>
-        <div>
-          <h4>Навигация</h4>
-          <RouterLink :to="{ name: 'home' }">Главная</RouterLink>
-          <RouterLink :to="{ name: 'catalog' }">Каталог скидок</RouterLink>
-          <RouterLink :to="{ name: 'how' }">Как это работает</RouterLink>
-        </div>
-        <div>
-          <h4>Категории</h4>
-          <a href="#">AI-инструменты</a>
-          <a href="#">Дизайн</a>
-          <a href="#">Разработка</a>
-          <a href="#">Продуктивность</a>
-          <a href="#">Офис</a>
-        </div>
-      </div>
-    </footer>
   </div>
 </template>

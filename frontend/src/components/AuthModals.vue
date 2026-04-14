@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthModal } from '../composables/useAuthModal'
-import { roleFromEmail, useSession } from '../composables/useSession'
+import { useSession } from '../composables/useSession'
 
 const router = useRouter()
 const { openMode, close, openLogin, openRegister } = useAuthModal()
@@ -33,9 +33,9 @@ function submitRegister() {
 }
 
 function submitLogin() {
-  login({ email: loginEmail.value })
+  const currentUser = login({ email: loginEmail.value, password: loginPass.value })
   close()
-  const role = roleFromEmail(loginEmail.value)
+  const role = currentUser?.role
   if (role === 'admin') router.push({ name: 'admin-dashboard' })
   else if (role === 'manager') router.push({ name: 'manager-discounts' })
 }
@@ -97,7 +97,7 @@ onUnmounted(() => {
                 <span class="auth-input-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L3 8v2h18V8L12 3zm-7 6l7 4 7-4" stroke="currentColor" stroke-width="2"/><path d="M5 14v6M19 14v6" stroke="currentColor" stroke-width="2"/></svg>
                 </span>
-                <input id="reg-uni" v-model="regUni" type="text" class="auth-input" placeholder="МГУ, СПбГУ, НИУ ВШЭ..." autocomplete="organization" />
+                <input id="reg-uni" v-model="regUni" type="text" class="auth-input" placeholder="МИРЭА, МГУ, СПбГУ, НИУ ВШЭ..." autocomplete="organization" />
               </div>
             </div>
 
@@ -125,15 +125,15 @@ onUnmounted(() => {
 
           <form class="auth-form" @submit.prevent="submitLogin">
             <div class="auth-field">
-              <label class="auth-label" for="login-email">Студенческая почта</label>
+              <label class="auth-label" for="login-email">Логин или почта</label>
               <div class="auth-input-row">
                 <span class="auth-input-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v12H4V6zm0 0l8 6 8-6" stroke="currentColor" stroke-width="2"/></svg>
                 </span>
-                <input id="login-email" v-model="loginEmail" type="email" class="auth-input" placeholder="manager@company.ru или admin@studentpass.ru" autocomplete="email" />
+                <input id="login-email" v-model="loginEmail" type="text" class="auth-input" placeholder="admin, manager или email" autocomplete="username" />
               </div>
               <p class="auth-hint">
-                Демо: <strong>admin@</strong> — админ-панель, <strong>manager@</strong> — кабинет компании, иначе — обычный пользователь.
+                Демо-вход: <strong>admin / admin</strong> — админ-панель, <strong>manager / manager</strong> — кабинет компании.
               </p>
             </div>
 

@@ -1,6 +1,12 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import { managerDiscounts } from '../../data/managerMock'
+import { useManagerDiscounts } from '../../composables/useManagerDiscounts'
+
+const { items: managerDiscounts, deleteDiscount } = useManagerDiscounts()
+
+function handleDelete(id) {
+  deleteDiscount(id)
+}
 </script>
 
 <template>
@@ -23,8 +29,21 @@ import { managerDiscounts } from '../../data/managerMock'
         <div class="mgr-discount-card__top">
           <span class="mgr-discount-emoji" aria-hidden="true">{{ card.emoji }}</span>
           <div class="mgr-discount-tools">
-            <button type="button" class="admin-icon-btn" aria-label="Редактировать">✎</button>
-            <button type="button" class="admin-icon-btn admin-icon-btn--danger" aria-label="Удалить">🗑</button>
+            <RouterLink
+              :to="{ name: 'manager-discount-edit', params: { id: card.id } }"
+              class="admin-icon-btn"
+              aria-label="Редактировать"
+            >
+              ✎
+            </RouterLink>
+            <button
+              type="button"
+              class="admin-icon-btn admin-icon-btn--danger"
+              aria-label="Удалить"
+              @click="handleDelete(card.id)"
+            >
+              🗑
+            </button>
           </div>
         </div>
         <h2>{{ card.title }}</h2>

@@ -5,7 +5,7 @@ export const managerDiscounts = [
     title: 'Burger King Student',
     description: '15% скидка на весь ассортимент при предъявлении студенческого билета или в приложении.',
     percent: '-15%',
-    category: 'Еда и кафе',
+    category: 'Продуктивность',
     views: 234,
     clicks: 156,
   },
@@ -15,7 +15,7 @@ export const managerDiscounts = [
     title: 'Starbucks для студентов',
     description: '10% на напитки и десерты по промокоду и студенческой карте.',
     percent: '-10%',
-    category: 'Еда и кафе',
+    category: 'Офис',
     views: 189,
     clicks: 98,
   },
@@ -34,4 +34,4 @@ export const managerStatsTable = [
   { offer: 'Комбо-набор -20%', views: '221', clicks: '122', ctr: '55.2%', period: 'Март 2025' },
 ]
 
-export const managerCategories = ['Еда и кафе', 'Развлечения', 'Одежда', 'Транспорт', 'Образование', 'Прочее']
+export const managerCategories = ['AI-инструменты', 'Дизайн', 'Разработка', 'Продуктивность', 'Офис', 'Облако']

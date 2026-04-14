@@ -113,16 +113,35 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
+  flex-wrap: nowrap;
   min-height: 64px;
   padding: 10px 0;
 }
 
 .site-header__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 800;
   font-size: 1.125rem;
   letter-spacing: 0.02em;
   color: #fff;
   flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.site-header__logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #7f2bff, #5f87ff);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: 0 6px 16px rgba(122, 56, 255, 0.35);
 }
 
 .site-header__nav {
@@ -131,7 +150,8 @@ p {
   justify-content: center;
   flex: 1;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .site-header__nav a {
@@ -142,6 +162,7 @@ p {
   font-weight: 500;
   border: 1px solid transparent;
   background: transparent;
+  white-space: nowrap;
 }
 
 .site-header__nav a.is-active {
@@ -200,6 +221,8 @@ p {
 
 .sp-hero h1 {
   max-width: 700px;
+  font-size: clamp(28px, 3.9vw, 48px);
+  line-height: 1.18;
   margin-bottom: 16px;
 }
 
@@ -615,6 +638,9 @@ p {
 }
 
 .cat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   border: 1px solid #272d55;
   border-radius: 15px;
   background: #0d112a;
@@ -634,36 +660,46 @@ p {
 .cat-card-top {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 12px;
 }
 
 .cat-card-top h3 {
-  font-size: 32px;
-  line-height: 1.1;
+  margin: 0;
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.15;
+  word-break: break-word;
 }
 
 .cat-card-top p {
-  margin-top: 3px;
+  margin: 6px 0 0;
   color: #9097bc;
-  font-size: 23px;
+  font-size: clamp(16px, 1.4vw, 22px);
+  line-height: 1.35;
 }
 
 .cat-card-top span {
   align-self: flex-start;
+  flex-shrink: 0;
   border-radius: 999px;
   background: #1b98ff;
   color: #fff;
-  font-size: 19px;
-  padding: 4px 8px;
+  font-size: clamp(14px, 1.1vw, 18px);
+  padding: 6px 10px;
   font-weight: 700;
 }
 
 .cat-card-desc {
-  margin-top: 12px;
+  margin: 0;
   color: #a1a8ca;
-  font-size: 29px;
+  font-size: clamp(18px, 1.8vw, 28px);
   line-height: 1.35;
-  min-height: 120px;
+  min-height: 110px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cat-tags {
@@ -677,33 +713,40 @@ p {
   background: #141833;
   border-radius: 10px;
   color: #b1b8d7;
-  font-size: 19px;
+  font-size: clamp(14px, 1.1vw, 18px);
   padding: 5px 9px;
 }
 
 .cat-price-row {
-  margin-top: 14px;
+  margin-top: auto;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  gap: 12px;
 }
 
 .cat-price-row small {
   display: block;
   color: #6f7698;
   text-decoration: line-through;
-  font-size: 21px;
+  font-size: clamp(14px, 1.2vw, 20px);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .cat-price-row strong {
   color: #1dd895;
-  font-size: 46px;
+  display: block;
+  font-size: clamp(24px, 2.4vw, 40px);
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .cat-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -713,16 +756,24 @@ p {
   border-radius: 999px;
   padding: 4px 8px;
   font-style: normal;
-  font-size: 19px;
+  font-size: clamp(14px, 1.1vw, 18px);
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .cat-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 120px;
   border: 1px solid #32385f;
   color: #d7dfff;
   border-radius: 999px;
   padding: 8px 14px;
-  font-size: 21px;
+  font-size: clamp(16px, 1.2vw, 21px);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .cat-card--orange {
@@ -1429,9 +1480,10 @@ button.sp-btn {
 }
 
 .auth-header-actions--logged {
-  max-width: 320px;
+  max-width: none;
   justify-content: flex-end;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .auth-header-email {
@@ -2072,12 +2124,17 @@ button.sp-btn {
 }
 
 .admin-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
   border-radius: 8px;
   border: 1px solid #363649;
   background: #1a1a26;
   color: #d4d4d8;
+  line-height: 1;
+  text-decoration: none;
   cursor: pointer;
 }
 

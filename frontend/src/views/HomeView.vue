@@ -44,15 +44,13 @@ const benefits = [
       <section class="sp-hero sp-container">
         <div>
           <span class="sp-badge">Новый сезон скидок 2025-2026</span>
-          <h1>Профессиональный софт и AI<br />по студенческой цене</h1>
-          <p class="sp-muted">
-            StudentPass — единая платформа, где студенты IT и дизайна находят
-            легальные скидки до 100% на Adobe, Figma, JetBrains, ChatGPT и десятки
-            других сервисов.
-          </p>
+          <h1>
+            StudentPass — единая платформа, где студенты IT и дизайна находят легальные скидки до
+            100% на Adobe, Figma, JetBrains, ChatGPT и десятки других сервисов.
+          </h1>
           <div class="sp-actions">
             <button type="button" class="sp-btn" @click="openRegister">Регистрация</button>
-            <a class="sp-btn sp-btn--ghost" href="#">Как это работает</a>
+            <RouterLink class="sp-btn sp-btn--ghost" :to="{ name: 'how' }">Как это работает</RouterLink>
           </div>
           <p class="sp-students">450 000+ студентов могут воспользоваться</p>
         </div>
@@ -132,28 +130,5 @@ const benefits = [
       </div>
     </section>
 
-    <footer class="sp-footer">
-      <div class="sp-container sp-footer-grid">
-        <div>
-          <div class="sp-logo">StudentPass</div>
-          <p class="sp-muted">
-            Единая платформа студенческих скидок на профессиональный софт и AI-сервисы.
-          </p>
-        </div>
-        <div>
-          <h4>Навигация</h4>
-          <RouterLink :to="{ name: 'home' }">Главная</RouterLink>
-          <RouterLink :to="{ name: 'catalog' }">Каталог скидок</RouterLink>
-          <RouterLink :to="{ name: 'how' }">Как это работает</RouterLink>
-        </div>
-        <div>
-          <h4>Категории</h4>
-          <a href="#">AI-инструменты</a>
-          <a href="#">Дизайн</a>
-          <a href="#">Разработка</a>
-          <a href="#">Продуктивность</a>
-        </div>
-      </div>
-    </footer>
   </div>
 </template>

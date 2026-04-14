@@ -118,7 +118,42 @@ const catalogItems = [
   },
 ]
 
+const MANAGER_STORAGE_KEY = 'studentpass_manager_discounts'
+
+function mapManagerDiscountToCatalogItem(item) {
+  const percentRaw = String(item.percent || '').replace(/[^\d]/g, '')
+  const percent = Number(percentRaw) || 0
+  const isFree = percent >= 100
+
+  return {
+    id: `manager-${item.id}`,
+    title: item.title || 'Скидка от партнера',
+    category: item.category || 'Прочее',
+    description: item.description || 'Предложение от партнера StudentPass.',
+    badges: ['Партнер', 'Локальная скидка', item.category || 'Прочее'],
+    tag: isFree ? 'Бесплатно' : 'Новое',
+    oldPrice: 'По прайсу партнера',
+    price: isFree ? 'Бесплатно' : 'Скидка у партнера',
+    discount: item.percent || '',
+    isFree,
+    accent: 'teal',
+  }
+}
+
+function readManagerCatalogItems() {
+  if (typeof localStorage === 'undefined') return []
+  try {
+    const raw = localStorage.getItem(MANAGER_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map(mapManagerDiscountToCatalogItem)
+  } catch {
+    return []
+  }
+}
+
 export async function getCatalogItems() {
   await new Promise((resolve) => setTimeout(resolve, 120))
-  return catalogItems
+  return [...readManagerCatalogItems(), ...catalogItems]
 }
