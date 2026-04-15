@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - Control System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #333;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 25px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .success {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #363;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .job-title {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .job-option {
+            padding: 8px 12px;
+            border: 1px solid #e1e5e9;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .job-option:hover {
+            background: #f0f4ff;
+            border-color: #667eea;
+        }
+
+        .job-option.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .password-error {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        /* Стили для спиннера */
+        .loading-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        .loading-text {
+            color: #333;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Индикатор загрузки -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <div class="loading-text">Регистрация...</div>
+        </div>
+
+        <div class="logo">
+            <h1>Control System</h1>
+            <p>Система управления строительными проектами</p>
+        </div>
+
+        <div id="errorMessage" class="error"></div>
+        <div id="successMessage" class="success"></div>
+
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="name">ФИО *</label>
+                <input type="text" id="name" name="name" required placeholder="Введите ваше полное имя">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" required placeholder="example@company.com">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Пароль *</label>
+                <input type="password" id="password" name="password" required placeholder="Не менее 6 символов">
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password">Подтверждение пароля *</label>
+                <input type="password" id="confirm_password" name="confirm_password" required placeholder="Повторите пароль">
+                <div id="passwordMatchError" class="password-error">
+                    Пароли не совпадают
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Должность *</label>
+                <!-- <select id="job_title" name="job_title" required>
+                    <option value="">Выберите должность</option>
+                    <option value="engineer">Инженер</option>
+                    <option value="manager">Менеджер</option>
+                    <option value="seo">Руководитель</option>
+                </select> -->
+                
+                <div class="job-title"> 
+                    <div class="job-option" data-value="engineer">
+                        🛠️ Инженер
+                    </div>
+                    <div class="job-option" data-value="manager">
+                        📊 Менеджер
+                    </div>
+                    <div class="job-option" data-value="seo">
+                        👨‍💼 Руководитель
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">Зарегистрироваться</button>
+        </form>
+
+        <div class="login-link">
+            Уже есть аккаунт? <a href="/login">Войдите в систему</a>
+        </div>
+    </div>
+
+    <script>
+        // Обработка выбора должности
+        document.querySelectorAll('.job-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.job-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                this.classList.add('selected');
+            });
+        });
+
+        // Функция для получения выбранной должности
+        function getSelectedJobTitle() {
+            const selectedOption = document.querySelector('.job-option.selected');
+            return selectedOption ? selectedOption.dataset.value : '';
+        }
+
+        // Валидация совпадения паролей
+        function validatePasswords() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            const errorDiv = document.getElementById('passwordMatchError');
+            
+            if (password !== confirmPassword && confirmPassword !== '') {
+                errorDiv.style.display = 'block';
+                return false;
+            } else {
+                errorDiv.style.display = 'none';
+                return true;
+            }
+        }
+
+        // Проверка паролей при вводе
+        document.getElementById('confirm_password').addEventListener('input', validatePasswords);
+        document.getElementById('password').addEventListener('input', validatePasswords);
+
+        // Функции для управления спиннером
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (show) {
+                overlay.style.display = 'flex';
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Регистрация...';
+            } else {
+                overlay.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Зарегистрироваться';
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        // Обработка формы регистрации
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Проверяем совпадение паролей
+            if (!validatePasswords()) {
+                showError('Пароли не совпадают');
+                return;
+            }
+
+            const formData = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                full_name: document.getElementById('name').value,
+                role: getSelectedJobTitle() // Используем функцию для получения значения должности
+            };
+
+            // Валидация
+            if (!formData.role) {
+                showError('Пожалуйста, выберите должность');
+                return;
+            }
+
+            if (formData.password.length < 6) {
+                showError('Пароль должен содержать не менее 6 символов');
+                return;
+            }
+
+            // Показываем спиннер
+            showLoading(true);
+
+            try {
+                const response = await fetch('/api/v1/users/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    showSuccess('Регистрация успешна! Вы будете перенаправлены на страницу входа.');
+                    document.getElementById('registrationForm').reset();
+                    document.querySelectorAll('.job-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Перенаправление на страницу входа через 3 секунды
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 3000);
+                } else {
+                    const data = await response.json();
+                    showError(data.detail || 'Ошибка при регистрации');
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером');
+            } finally {
+                showLoading(false);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+# openapi.yaml
+openapi: 3.0.3
+info:
+  title: Control System Stroy API
+  description: Система управления дефектами на строительных объектах
+  version: 2.0.0
+  contact:
+    name: API Support
+    email: support@controlsystem.ru
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: Аутентификация и управление сессиями
+  - name: Users
+    description: Управление пользователями  
+  - name: Defects
+    description: Управление дефектами (строительными)
+
+paths:
+  # ==================== АУТЕНТИФИКАЦИЯ ====================
+  /api/v1/users/register:
+    post:
+      tags: [Authentication]
+      summary: Регистрация нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '200':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  msg:
+                    type: string
+                    example: "Пользователь успешно зарегистрирован"
+                  user:
+                    $ref: '#/components/schemas/UserResponse'
+
+  /api/v1/users/login:
+    post:
+      tags: [Authentication]
+      summary: Вход в систему
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  # ==================== ПОЛЬЗОВАТЕЛИ ====================
+  /api/v1/users/me:
+    get:
+      tags: [Users]
+      summary: Получить данные текущего пользователя
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Успешное получение данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  # ==================== ДЕФЕКТЫ ====================
+  /api/v1/orders:
+    get:
+      tags: [Defects]
+      summary: Получить список дефектов пользователя
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: skip
+          in: query
+          schema: {type: integer, minimum: 0, default: 0}
+        - name: limit  
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 100}
+      responses:
+        '200':
+          description: Успешное получение списка дефектов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DefectResponse'
+
+    post:
+      tags: [Defects]
+      summary: Создать новый дефект
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefectCreate'
+      responses:
+        '200':
+          description: Дефект успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectResponse'
+
+  /api/v1/orders/{defect_id}:
+    get:
+      tags: [Defects]
+      summary: Получить дефект по ID
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: defect_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Успешное получение дефекта
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectResponse'
+
+    put:
+      tags: [Defects]
+      summary: Обновить статус дефекта
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: defect_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefectUpdate'
+      responses:
+        '200':
+          description: Дефект успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectResponse'
+
+    delete:
+      tags: [Defects]
+      summary: Удалить дефект
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: defect_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Дефект успешно удален
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: {type: string, example: "Defect deleted"}
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+
+  schemas:
+    # ==================== ПОЛЬЗОВАТЕЛИ ====================
+    UserCreate:
+      type: object
+      required: [email, password, full_name, role]
+      properties:
+        email: {type: string, format: email, example: "user@example.com"}
+        password: {type: string, minLength: 6, example: "securepassword123"}
+        full_name: {type: string, example: "Иван Иванов"}
+        role: {type: string, enum: [engineer, manager, seo], example: "engineer"}
+
+    UserLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email, example: "user@example.com"}
+        password: {type: string, example: "securepassword123"}
+
+    UserResponse:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        full_name: {type: string}
+        role: {type: string, enum: [engineer, manager, seo]}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    LoginResponse:
+      type: object
+      properties:
+        message: {type: string, example: "Login successful"}
+        token_type: {type: string, example: "bearer"}
+
+    # ==================== ДЕФЕКТЫ ====================
+    DefectCreate:
+      type: object
+      required: [defect_description, defect_location, defect_type, defect_priority, responsible_person]
+      properties:
+        defect_description: {type: string, example: "Трещина в несущей стене"}
+        defect_location: {type: string, example: "Объект А, 3 этаж, комната 305"}
+        defect_type: {type: string, enum: [structural, finishing, electrical, plumbing, other], example: "structural"}
+        defect_priority: {type: string, enum: [low, medium, high, critical], example: "high"}
+        responsible_person: {type: string, example: "Иванов Иван"}
+        severity_level: {type: integer, minimum: 1, maximum: 4, example: 3}
+
+    DefectUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, enum: [created, in_progress, completed, cancelled], example: "in_progress"}
+
+    DefectResponse:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        user_id: {type: string, format: uuid}
+        defect_description: {type: string}
+        defect_location: {type: string}
+        defect_type: {type: string}
+        defect_priority: {type: string}
+        responsible_person: {type: string}
+        severity_level: {type: integer}
+        status: {type: string}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    Error:
+      type: object
+      properties:
+        detail: {type: string, example: "Error description"}

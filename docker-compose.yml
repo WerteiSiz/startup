@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  postgres:  # 👈 ДОБАВЬ ЭТУ СТРОКУ!
+    image: postgres:17
+    environment:
+      POSTGRES_DB: control_sys_2
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  api_gateway:
+    build: ./api_gateway
+    ports:
+      - "80:8000"
+    environment:
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - ACC_TOKEN_EXP_MIN=${ACC_TOKEN_EXP_MIN}
+      - REDIS_URL=${REDIS_URL}
+    volumes:
+      - ./api_gateway:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - service_users
+      - service_orders
+
+  service_users:
+    build: ./service_users
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/users_db  # 👈 Исправь пароль
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - ACC_TOKEN_EXP_MIN=${ACC_TOKEN_EXP_MIN}
+      - ORDERS_SERVICE_URL=http://service_orders:8000
+    volumes:
+      - ./service_users:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - postgres
+
+  service_orders:
+    build: ./service_orders
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/orders_db  # 👈 Исправь пароль
+      - USERS_SERVICE_URL=http://service_users:8000
+    volumes:
+      - ./service_orders:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - postgres
+      - service_users
+
+
+  redis:
+    image: redis:7
+    ports:
+    - "6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

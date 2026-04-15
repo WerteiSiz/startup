@@ -1,0 +1,386 @@
+{
+  "info": {
+    "name": "Construction Defects Management API",
+    "description": "API для управления дефектами на строительных объектах",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "defect_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"123456\",\n  \"full_name\": \"Test User\",\n  \"role\": \"engineer\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Check if login was successful",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Check response message",
+                  "pm.test(\"Login successful\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.equal(\"Login successful\");",
+                  "});",
+                  "",
+                  "// The token is automatically set in cookies by the server",
+                  "// For subsequent requests, Postman will automatically send the cookie"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "👤 Users",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"User data returned\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property(\"id\");",
+                  "    pm.expect(response).to.have.property(\"email\");",
+                  "    pm.expect(response).to.have.property(\"full_name\");",
+                  "    pm.expect(response).to.have.property(\"role\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🏗️ Defects Management",
+      "item": [
+        {
+          "name": "Create Defect",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"defect_description\": \"Трещина в несущей стене на 3 этаже\",\n  \"defect_location\": \"Объект А, 3 этаж, комната 305\",\n  \"defect_type\": \"structural\",\n  \"defect_priority\": \"high\",\n  \"responsible_person\": \"Иванов Иван Иванович\",\n  \"severity_level\": 3\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "orders", ""]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Defect created successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Defect data returned\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property(\"id\");",
+                  "    pm.expect(response).to.have.property(\"defect_description\");",
+                  "    pm.expect(response).to.have.property(\"defect_location\");",
+                  "    pm.expect(response).to.have.property(\"defect_type\");",
+                  "    pm.expect(response).to.have.property(\"defect_priority\");",
+                  "    pm.expect(response).to.have.property(\"responsible_person\");",
+                  "    pm.expect(response).to.have.property(\"status\");",
+                  "    ",
+                  "    // Save defect ID for later tests",
+                  "    pm.environment.set(\"defect_id\", response.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Defects",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "orders", ""]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Defects list returned\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Defect by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{defect_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "orders", "{{defect_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Defect details returned\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.id).to.equal(pm.environment.get(\"defect_id\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Defect Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{defect_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "orders", "{{defect_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Defect updated successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Status changed to in_progress\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.status).to.equal(\"in_progress\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Defect",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/{{defect_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "orders", "{{defect_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Defect deleted successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Success message returned\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.equal(\"Defect deleted\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🏥 Health Checks",
+      "item": [
+        {
+          "name": "API Gateway Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Service Users Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "health"]
+            }
+          }
+        },
+        {
+          "name": "Service Orders Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/orders/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "orders", "health"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои дефекты - Control System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: white; border-radius: 15px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); padding: 30px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo h1 { color: #333; font-size: 32px; font-weight: 600; margin-bottom: 5px; }
+        .logo p { color: #666; font-size: 16px; }
+        .page-actions { display: flex; gap: 15px; }
+        .btn { padding: 12px 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
+        .btn-secondary { background: #6c757d; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-sm { padding: 8px 16px; font-size: 12px; }
+        .btn-outline { background: white; border: 2px solid #667eea; color: #667eea; }
+        .btn-outline:hover { background: #667eea; color: white; }
+        
+        .orders-container { background: white; border-radius: 15px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); padding: 40px; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .section-title { color: #333; font-size: 24px; font-weight: 600; }
+        
+        /* Стили для поиска и фильтров */
+        .search-filters { display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 250px; }
+        .search-input { width: 100%; padding: 12px 15px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 14px; }
+        .search-input:focus { outline: none; border-color: #667eea; }
+        .filter-select { padding: 12px 15px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 14px; min-width: 180px; }
+        
+        /* Стили для скролла дефектов */
+        .orders-scroll-container { max-height: 600px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #e1e5e9; border-radius: 10px; }
+        .orders-grid { display: grid; gap: 15px; padding: 20px; }
+        
+        .order-card { background: #f8f9fa; border-radius: 10px; padding: 20px; border-left: 4px solid #667eea; transition: all 0.3s ease; position: relative; }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); }
+        .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .order-id { color: #666; font-size: 14px; font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 4px; }
+        .order-status { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .status-created { background: #e3f2fd; color: #1976d2; }
+        .status-in_progress { background: #fff3e0; color: #f57c00; }
+        .status-completed { background: #e8f5e8; color: #2e7d32; }
+        .status-cancelled { background: #ffebee; color: #c62828; }
+        
+        .defect-info { margin-bottom: 15px; }
+        .defect-description { color: #333; font-weight: 500; margin-bottom: 8px; font-size: 16px; }
+        .defect-location { color: #666; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+        .defect-type { color: #666; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+        .defect-priority { color: #666; margin-bottom: 5px; display: flex; align-items: center; gap: 5px; }
+        .defect-responsible { color: #666; display: flex; align-items: center; gap: 5px; }
+        
+        .order-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e1e5e9; }
+        .order-date { color: #666; font-size: 14px; }
+        .order-actions { display: flex; gap: 10px; margin-top: 15px; }
+        
+        /* Пагинация */
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 30px; }
+        .pagination-btn { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; transition: all 0.3s ease; margin-left: 3px;}
+        .pagination-btn:hover { background: #f8f9fa; border-color: #667eea; }
+        .pagination-btn.active { background: #667eea; color: white; border-color: #667eea; }
+        .pagination-btn:disabled { background: #f8f9fa; color: #999; cursor: not-allowed; }
+        .page-info { color: #666; font-size: 14px; }
+        
+        .no-orders { text-align: center; padding: 60px 20px; color: #666; }
+        .no-orders h3 { font-size: 20px; margin-bottom: 10px; }
+        .error { background: #fee; border: 1px solid #fcc; color: #c33; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        
+        /* Модальные окна */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 15px; padding: 30px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e1e5e9; }
+        .modal-header h2 { color: #333; font-size: 20px; margin: 0; }
+        .close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #666; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+        .close-btn:hover { color: #333; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 15px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 14px; transition: all 0.3s ease; background: #f8f9fa; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #667eea; background: white; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e1e5e9; }
+        .status-select { width: 100%; padding: 10px; border: 2px solid #e1e5e9; border-radius: 6px; font-size: 14px; margin-bottom: 15px; }
+        .success-message { background: #d4edda; color: #155724; padding: 12px; border-radius: 6px; margin-bottom: 15px; display: none; }
+        
+        /* Приоритеты */
+        .priority-low { border-left-color: #28a745; }
+        .priority-medium { border-left-color: #ffc107; }
+        .priority-high { border-left-color: #fd7e14; }
+        .priority-critical { border-left-color: #dc3545; }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 20px; text-align: center; }
+            .page-actions { justify-content: center; }
+            .search-filters { flex-direction: column; }
+            .order-header, .order-footer { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .order-actions { flex-direction: column; }
+            .pagination { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <h1>Дефекты</h1>
+                <p>Управление строительными проектами</p>
+            </div>
+            <div class="page-actions">
+                <a href="/profile" class="btn btn-secondary">👤 Профиль</a>
+                <button onclick="openCreateOrderModal()" class="btn">➕ Создать дефект</button>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error"></div>
+        <div id="successMessage" class="success-message"></div>
+
+        <div class="orders-container">
+            <div class="section-header">
+                <h2 class="section-title">История дефектов</h2>
+            </div>
+            
+            <!-- Поиск и фильтры -->
+            <div class="search-filters">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Поиск по описанию или местоположению..." class="search-input">
+                </div>
+                <select id="statusFilter" class="filter-select">
+                    <option value="">Все статусы</option>
+                    <option value="created">🆕 Создан</option>
+                    <option value="in_progress">🔄 В работе</option>
+                    <option value="completed">✅ Завершён</option>
+                    <option value="cancelled">❌ Отменён</option>
+                </select>
+                <select id="priorityFilter" class="filter-select">
+                    <option value="">Все приоритеты</option>
+                    <option value="low">🟢 Низкий</option>
+                    <option value="medium">🟡 Средний</option>
+                    <option value="high">🔴 Высокий</option>
+                    <option value="critical">⚡ Критический</option>
+                </select>
+                <select id="sortSelect" class="filter-select">
+                    <option value="newest">Сначала новые</option>
+                    <option value="oldest">Сначала старые</option>
+                    <option value="priority_high">По приоритету (высокий)</option>
+                    <option value="priority_low">По приоритету (низкий)</option>
+                </select>
+                <button onclick="clearFilters()" class="btn btn-outline">🗑️ Сбросить</button>
+            </div>
+            
+            <!-- Контейнер со скроллом -->
+            <div class="orders-scroll-container">
+                <div id="ordersList" class="orders-grid">
+                    <div class="loading">Загрузка дефектов...</div>
+                </div>
+            </div>
+            
+            <!-- Пагинация -->
+            <div class="pagination">
+                <button id="prevPage" class="pagination-btn" onclick="changePage(currentPage - 1)">← Назад</button>
+                
+                <div id="pageNumbers" class="pagination-numbers">
+                    <!-- Номера страниц будут генерироваться динамически -->
+                </div>
+                
+                <button id="nextPage" class="pagination-btn" onclick="changePage(currentPage + 1)">Вперёд →</button>
+                
+                <span class="page-info" id="pageInfo">Страница 1 из 1</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно создания дефекта -->
+    <div id="createOrderModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ Создать новый дефект</h2>
+                <button class="close-btn" onclick="closeModal()">×</button>
+            </div>
+            
+            <form id="createOrderForm">
+                <div class="form-group">
+                    <label for="defectDescription">Описание дефекта *</label>
+                    <textarea id="defectDescription" name="defectDescription" placeholder="Подробное описание дефекта..." rows="3" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="defectLocation">Местоположение *</label>
+                    <input type="text" id="defectLocation" name="defectLocation" placeholder="Объект, этаж, помещение..." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="defectType">Тип дефекта *</label>
+                    <select id="defectType" name="defectType" required>
+                        <option value="">Выберите тип дефекта</option>
+                        <option value="structural">🏗️ Конструктивный</option>
+                        <option value="finishing">🎨 Отделочный</option>
+                        <option value="electrical">⚡ Электрический</option>
+                        <option value="plumbing">🚰 Сантехнический</option>
+                        <option value="other">❓ Другой</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="defectPriority">Приоритет *</label>
+                    <select id="defectPriority" name="defectPriority" required>
+                        <option value="">Выберите приоритет</option>
+                        <option value="low">🟢 Низкий</option>
+                        <option value="medium">🟡 Средний</option>
+                        <option value="high">🔴 Высокий</option>
+                        <option value="critical">⚡ Критический</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="defectResponsible">Ответственный *</label>
+                    <input type="text" id="defectResponsible" name="defectResponsible" placeholder="ФИО ответственного..." required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                    <button type="submit" class="btn">Создать дефект</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно редактирования дефекта -->
+    <div id="editOrderModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Редактировать дефект</h2>
+                <button class="close-btn" onclick="closeEditModal()">×</button>
+            </div>
+            
+            <form id="editOrderForm">
+                <input type="hidden" id="editOrderId">
+                
+                <div class="form-group">
+                    <label>Статус дефекта:</label>
+                    <select id="editOrderStatus" class="status-select">
+                        <option value="created">🆕 Создан</option>
+                        <option value="in_progress">🔄 В работе</option>
+                        <option value="completed">✅ Завершён</option>
+                        <option value="cancelled">❌ Отклонен</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editDefectDescription">Описание дефекта</label>
+                    <textarea id="editDefectDescription" name="defectDescription" placeholder="Подробное описание дефекта..." rows="3" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="editDefectLocation">Местоположение</label>
+                    <input type="text" id="editDefectLocation" name="defectLocation" placeholder="Объект, этаж, помещение..." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="editDefectType">Тип дефекта</label>
+                    <select id="editDefectType" name="defectType" required>
+                        <option value="structural">🏗️ Конструктивный</option>
+                        <option value="finishing">🎨 Отделочный</option>
+                        <option value="electrical">⚡ Электрический</option>
+                        <option value="plumbing">🚰 Сантехнический</option>
+                        <option value="other">❓ Другой</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editDefectPriority">Приоритет</label>
+                    <select id="editDefectPriority" name="defectPriority" required>
+                        <option value="low">🟢 Низкий</option>
+                        <option value="medium">🟡 Средний</option>
+                        <option value="high">🔴 Высокий</option>
+                        <option value="critical">⚡ Критический</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="editDefectResponsible">Ответственный</label>
+                    <input type="text" id="editDefectResponsible" name="defectResponsible" placeholder="ФИО ответственного..." required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" onclick="deleteOrder()" id="deleteOrderBtn">
+                        🗑️ Удалить дефект
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Отмена</button>
+                    <button type="submit" class="btn">💾 Сохранить изменения</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentOrders = [];
+        let currentPage = 1;
+        const ordersPerPage = 5;
+        let totalPages = 1;
+        let searchTerm = '';
+        let statusFilter = '';
+        let priorityFilter = '';
+        let sortBy = 'newest';
+
+        // Загрузка дефектов
+        async function loadOrders() {
+            try {
+                showLoading(true);
+                const response = await fetch('/api/v1/orders/');
+                if (response.ok) {
+                    const orders = await response.json();
+                    currentOrders = orders;
+                    applyFiltersAndDisplay();
+                } else {
+                    showError('Ошибка загрузки дефектов');
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function applyFiltersAndDisplay() {
+            let filteredOrders = [...currentOrders];
+            
+            // Применяем поиск по описанию и местоположению
+            if (searchTerm) {
+                const searchTermClean = searchTerm.toLowerCase();
+                filteredOrders = filteredOrders.filter(order => 
+                    (order.defect_description && order.defect_description.toLowerCase().includes(searchTermClean)) ||
+                    (order.defect_location && order.defect_location.toLowerCase().includes(searchTermClean)) ||
+                    (order.responsible_person && order.responsible_person.toLowerCase().includes(searchTermClean))
+                );
+            }
+            
+            // Применяем фильтр по статусу
+            if (statusFilter) {
+                filteredOrders = filteredOrders.filter(order => 
+                    order.status === statusFilter
+                );
+            }
+            
+            // Применяем фильтр по приоритету
+            if (priorityFilter) {
+                filteredOrders = filteredOrders.filter(order => 
+                    order.defect_priority === priorityFilter
+                );
+            }
+            
+            // Применяем сортировку
+            filteredOrders.sort((a, b) => {
+                switch (sortBy) {
+                    case 'oldest':
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    case 'priority_high':
+                        return getPriorityWeight(b.defect_priority) - getPriorityWeight(a.defect_priority);
+                    case 'priority_low':
+                        return getPriorityWeight(a.defect_priority) - getPriorityWeight(b.defect_priority);
+                    case 'newest':
+                    default:
+                        return new Date(b.created_at) - new Date(a.created_at);
+                }
+            });
+            
+            // Обновляем пагинацию
+            totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
+            if (currentPage > totalPages) currentPage = 1;
+            
+            // Получаем дефекты для текущей страницы
+            const startIndex = (currentPage - 1) * ordersPerPage;
+            const endIndex = startIndex + ordersPerPage;
+            const ordersToDisplay = filteredOrders.slice(startIndex, endIndex);
+            
+            displayOrders(ordersToDisplay);
+            updatePagination(filteredOrders.length);
+        }
+
+        function displayOrders(orders) {
+            const ordersList = document.getElementById('ordersList');
+            
+            if (!orders || orders.length === 0) {
+                ordersList.innerHTML = `
+                    <div class="no-orders">
+                        <h3>Дефектов не найдено</h3>
+                        <p>Попробуйте изменить параметры поиска или создать новый дефект</p>
+                        <button onclick="openCreateOrderModal()" class="btn" style="margin-top: 15px;">
+                            ➕ Создать первый дефект
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            ordersList.innerHTML = orders.map(order => `
+                <div class="order-card priority-${order.defect_priority || 'medium'}">
+                    <div class="order-header">
+                        <div class="order-id">#${order.id?.slice(0, 8) || 'N/A'}</div>
+                        <div class="order-status status-${order.status || 'created'}">
+                            ${getStatusDisplayName(order.status)}
+                        </div>
+                    </div>
+                    
+                    <div class="defect-info">
+                        <div class="defect-description">${order.defect_description || 'Описание отсутствует'}</div>
+                        <div class="defect-location">📍 ${order.defect_location || 'Местоположение не указано'}</div>
+                        <div class="defect-type">📋 ${getDefectTypeDisplayName(order.defect_type)}</div>
+                        <div class="defect-priority">🚨 ${getPriorityDisplayName(order.defect_priority)}</div>
+                        <div class="defect-responsible">👤 ${order.responsible_person || 'Ответственный не назначен'}</div>
+                    </div>
+                    
+                    <div class="order-footer">
+                        <div class="order-date">
+                            ${order.created_at ? new Date(order.created_at).toLocaleDateString('ru-RU') : 'Дата не указана'}
+                        </div>
+                    </div>
+                    
+                    <div class="order-actions">
+                        <button onclick="openEditOrderModal('${order.id}')" class="btn btn-warning btn-sm">
+                            ✏️ Редактировать
+                        </button>
+                        <button onclick="updateOrderStatus('${order.id}', 'completed')" class="btn btn-sm" 
+                                ${order.status === 'completed' ? 'disabled' : ''}>
+                            ✅ Завершить
+                        </button>
+                        <button onclick="updateOrderStatus('${order.id}', 'cancelled')" class="btn btn-danger btn-sm"
+                                ${order.status === 'cancelled' ? 'disabled' : ''}>
+                            ❌ Отменить
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updatePagination(totalOrders) {
+            const pageInfo = document.getElementById('pageInfo');
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            const pageNumbers = document.getElementById('pageNumbers');
+            
+            pageInfo.textContent = `Страница ${currentPage} из ${totalPages} (всего: ${totalOrders})`;
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+            
+            // Генерируем номера страниц
+            let pagesHtml = '';
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                pagesHtml += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+            
+            pageNumbers.innerHTML = pagesHtml;
+        }
+
+        function changePage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            applyFiltersAndDisplay();
+            // Прокручиваем к верху списка дефектов
+            document.querySelector('.orders-scroll-container').scrollTop = 0;
+        }
+
+        function showLoading(show) {
+            const ordersList = document.getElementById('ordersList');
+            if (show) {
+                ordersList.innerHTML = '<div class="loading">Загрузка дефектов...</div>';
+            }
+        }
+
+        // Вспомогательные функции для отображения
+        function getStatusDisplayName(status) {
+            const statuses = {
+                'created': 'Создан',
+                'in_progress': 'В работе',
+                'completed': 'Завершён',
+                'cancelled': 'Отменён'
+            };
+            return statuses[status] || status || 'Создан';
+        }
+
+        function getDefectTypeDisplayName(type) {
+            const types = {
+                'structural': 'Конструктивный',
+                'finishing': 'Отделочный',
+                'electrical': 'Электрический',
+                'plumbing': 'Сантехнический',
+                'other': 'Другой'
+            };
+            return types[type] || type || 'Не указан';
+        }
+
+        function getPriorityDisplayName(priority) {
+            const priorities = {
+                'low': 'Низкий',
+                'medium': 'Средний',
+                'high': 'Высокий',
+                'critical': 'Критический'
+            };
+            return `Приоритет: ${priorities[priority] || priority || 'Не указан'}`;
+        }
+
+        function getPriorityWeight(priority) {
+            const weights = {
+                'low': 1,
+                'medium': 2,
+                'high': 3,
+                'critical': 4
+            };
+            return weights[priority] || 0;
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => successDiv.style.display = 'none', 5000);
+        }
+
+        // Обработчики поиска и фильтров
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            searchTerm = e.target.value;
+            currentPage = 1;
+            applyFiltersAndDisplay();
+        });
+
+        document.getElementById('statusFilter').addEventListener('change', function(e) {
+            statusFilter = e.target.value;
+            currentPage = 1;
+            applyFiltersAndDisplay();
+        });
+
+        document.getElementById('priorityFilter').addEventListener('change', function(e) {
+            priorityFilter = e.target.value;
+            currentPage = 1;
+            applyFiltersAndDisplay();
+        });
+
+        document.getElementById('sortSelect').addEventListener('change', function(e) {
+            sortBy = e.target.value;
+            currentPage = 1;
+            applyFiltersAndDisplay();
+        });
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('priorityFilter').value = '';
+            document.getElementById('sortSelect').value = 'newest';
+            searchTerm = '';
+            statusFilter = '';
+            priorityFilter = '';
+            sortBy = 'newest';
+            currentPage = 1;
+            applyFiltersAndDisplay();
+        }
+
+        // ========== ФУНКЦИИ ДЛЯ РАБОТЫ С ДЕФЕКТАМИ ==========
+
+        function openCreateOrderModal() {
+            document.getElementById('createOrderModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('createOrderModal').style.display = 'none';
+            document.getElementById('createOrderForm').reset();
+        }
+
+        // Создание дефекта
+        document.getElementById('createOrderForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const defectData = {
+                defect_description: document.getElementById('defectDescription').value,
+                defect_location: document.getElementById('defectLocation').value,
+                defect_type: document.getElementById('defectType').value,
+                defect_priority: document.getElementById('defectPriority').value,
+                responsible_person: document.getElementById('defectResponsible').value,
+                severity_level: getPriorityWeight(document.getElementById('defectPriority').value)
+            };
+            
+            try {
+                const response = await fetch('/api/v1/orders/', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(defectData)
+                });
+
+                if (response.ok) {
+                    const newOrder = await response.json();
+                    closeModal();
+                    showSuccess('Дефект успешно создан!');
+                    loadOrders();
+                } else {
+                    const errorData = await response.json();
+                    showError('Ошибка при создании дефекта: ' + (errorData.detail || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером: ' + error.message);
+            }
+        });
+
+        // Функции редактирования дефекта
+        function openEditOrderModal(orderId) {
+            const order = currentOrders.find(o => o.id === orderId);
+            if (!order) {
+                showError('Дефект не найден');
+                return;
+            }
+
+            document.getElementById('editOrderId').value = orderId;
+            document.getElementById('editOrderStatus').value = order.status;
+            document.getElementById('editDefectDescription').value = order.defect_description || '';
+            document.getElementById('editDefectLocation').value = order.defect_location || '';
+            document.getElementById('editDefectType').value = order.defect_type || 'other';
+            document.getElementById('editDefectPriority').value = order.defect_priority || 'medium';
+            document.getElementById('editDefectResponsible').value = order.responsible_person || '';
+            
+            document.getElementById('editOrderModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editOrderModal').style.display = 'none';
+            document.getElementById('editOrderForm').reset();
+        }
+
+        // Обновление дефекта
+        document.getElementById('editOrderForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const orderId = document.getElementById('editOrderId').value;
+            const newStatus = document.getElementById('editOrderStatus').value;
+            
+            try {
+                const statusResponse = await fetch(`/api/v1/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        status: newStatus
+                    })
+                });
+
+                if (statusResponse.ok) {
+                    closeEditModal();
+                    showSuccess('Дефект успешно обновлен!');
+                    loadOrders();
+                } else {
+                    const errorData = await statusResponse.json();
+                    showError('Ошибка при обновлении дефекта: ' + (errorData.detail || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером: ' + error.message);
+            }
+        });
+
+        // Быстрое обновление статуса
+        async function updateOrderStatus(orderId, newStatus) {
+            try {
+                const response = await fetch(`/api/v1/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        status: newStatus
+                    })
+                });
+
+                if (response.ok) {
+                    showSuccess(`Статус дефекта изменен на: ${getStatusDisplayName(newStatus)}`);
+                    loadOrders();
+                } else {
+                    const errorData = await response.json();
+                    showError('Ошибка при обновлении статуса: ' + (errorData.detail || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером: ' + error.message);
+            }
+        }
+
+        // Удаление дефекта
+        async function deleteOrder() {
+            const orderId = document.getElementById('editOrderId').value;
+            
+            if (!confirm('Вы уверены, что хотите удалить этот дефект?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/v1/orders/${orderId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    closeEditModal();
+                    showSuccess('Дефект успешно удален!');
+                    loadOrders();
+                } else {
+                    const errorData = await response.json();
+                    showError('Ошибка при удалении дефекта: ' + (errorData.detail || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                showError('Ошибка соединения с сервером: ' + error.message);
+            }
+        }
+
+        // Загружаем дефекты при загрузке страницы
+        loadOrders();
+    </script>
+</body>
+</html>
