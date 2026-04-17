@@ -27,7 +27,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - service_users
-      - service_orders
+      # - service_orders
 
   service_users:
     build: ./service_users
@@ -43,17 +43,17 @@ services:
     depends_on:
       - postgres
 
-  service_orders:
-    build: ./service_orders
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/orders_db  # 👈 Исправь пароль
-      - USERS_SERVICE_URL=http://service_users:8000
-    volumes:
-      - ./service_orders:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    depends_on:
-      - postgres
-      - service_users
+  # service_orders:
+  #   build: ./service_orders
+  #   environment:
+  #     - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/orders_db  # 👈 Исправь пароль
+  #     - USERS_SERVICE_URL=http://service_users:8000
+  #   volumes:
+  #     - ./service_orders:/app
+  #   command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  #   depends_on:
+  #     - postgres
+  #     - service_users
 
 
   redis:

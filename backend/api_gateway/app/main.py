@@ -18,12 +18,6 @@ def render_template(template_name: str):
     with open(template_path, "r", encoding="utf-8") as f:
         return f.read()
 
-# Конфигурация сервисов
-SERVICE_URLS = {
-    "users": "http://service_users:8000",
-    "orders": "http://service_orders:8000"
-}
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -44,10 +38,11 @@ async def auth_middleware(request: Request, call_next):
         return await call_next(request)
     
     public_paths = [
-        '/', '/login', '/register', '/api/v1/users/health',
-        '/api/v1/orders/health', '/api/v1/users/login',
-        '/api/v1/users/register'
+        '/', '/login', '/register', '/api/v1/health',
+        '/api/v1/login',
+        '/api/v1/auth/register'
     ]
+
 
     if request.url.path in public_paths:
         return await call_next(request)
@@ -112,15 +107,14 @@ async def orders_page(request: Request):
 # ================== ПРОКСИРОВАНИЕ ==================
 @app.api_route("/api/v1/users/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def proxy_users(request: Request, path: str):
-    return await proxy_request("users", request, path)
+    return await proxy_request(request, path)
 
-@app.api_route("/api/v1/orders/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
-async def proxy_orders(request: Request, path: str):
-    return await proxy_request("orders", request, path)
+@app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+async def proxy_users(request: Request, path: str):
+    return await proxy_request(request, path)
 
-async def proxy_request(service: str, request: Request, path: str):
-    target_url = f"{SERVICE_URLS[service]}/api/v1/{service}/{path}"
-    
+async def proxy_request(request: Request, path: str):
+    target_url = f"http://service_users:8000/api/v1/{path}"
     headers = {
         key: value for key, value in request.headers.items()
         if key.lower() not in ['host', 'content-length']
@@ -150,9 +144,9 @@ async def proxy_request(service: str, request: Request, path: str):
                 headers=dict(response.headers)
             )
     except httpx.ConnectError:
-        raise HTTPException(status_code=503, detail=f"Service {service} unavailable")
+        raise HTTPException(status_code=503, detail=f"Service unavailable")
     except Exception as e:
-        logger.error(f"Error proxying to {service}: {str(e)}")
+        logger.error(f"Error proxying to: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal gateway error")
 
 # ================== HEALTH CHECK ==================
