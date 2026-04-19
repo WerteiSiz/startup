@@ -12,6 +12,11 @@ from . import crud
 from .schemas import *
 from .security import *
 
+
+from faststream.rabbit import RabbitBroker
+
+broker = RabbitBroker("amqp://guest:guest@rabbitmq:5672/")
+
 # ==================== Lifespan ====================
 
 @asynccontextmanager
@@ -20,9 +25,25 @@ async def lifespan(app: FastAPI):
     try:
         await create_tables()
         print("✅ Таблицы созданы/проверены", file=sys.stderr)
+
+        # Подключаем брокера
+        print("🔄 Подключение к RabbitMQ...", file=sys.stderr)
+        await broker.connect()  # 👈 ВАЖНО: сначала connect()
+        print("✅ Брокер подключен", file=sys.stderr)
+        
+        # Объявляем очередь
+        from faststream.rabbit import RabbitQueue
+        await broker.declare_queue(RabbitQueue("email_queue"))
+        print("✅ Очередь email_queue объявлена", file=sys.stderr)
+
     except Exception as e:
-        print(f"❌ Ошибка при создании таблиц: {e}", file=sys.stderr)
+        print(f"❌ Ошибка: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
     yield
+
+    await broker.close()
+
 
 
 # ==================== App ====================
@@ -148,6 +169,16 @@ async def register_user(
     
     # TODO: Отправить код на email (пока просто логируем)
     print(f"📧 Код подтверждения для {data.email}: {code}")
+
+    email_data = {
+        "email": new_user.email,
+        "full_name": new_user.full_name,
+        "subject": "Добро пожаловать в StudentPass!",
+        "message": "Вы успешно зарегистрировались в платформе студенческих скидок StudentPass",
+        "code": code
+    }
+    
+    await broker.publish(email_data, queue="email_queue")
     
     return MessageResponse(message="Код подтверждения отправлен на почту")
 

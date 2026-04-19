@@ -15,3 +15,8 @@ pytest
 pytest-asyncio
 aiohttp
 jinja2
+faststream[rabbit]==0.5.0
+aio-pika==9.4.0
+
+pydantic==2.5.3
+faststream==0.5.0

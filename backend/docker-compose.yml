@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  postgres:  # 👈 ДОБАВЬ ЭТУ СТРОКУ!
+  postgres:
     image: postgres:17
     environment:
       POSTGRES_DB: control_sys_2
@@ -12,6 +10,90 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d control_sys_2"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: service_rabbitmq
+    ports:
+      - "5672:5672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    logging:
+      driver: "none"
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  service_users:
+    build: ./service_users
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/users_db
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - ACC_TOKEN_EXP_MIN=${ACC_TOKEN_EXP_MIN}
+      - ORDERS_SERVICE_URL=http://service_orders:8000
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
+    volumes:
+      - ./service_users:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - app-network
+
+  service_notify:
+    build: ./service_notify
+    container_name: service_notify
+    ports:
+      - "8003:8000"
+    environment:
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_LOGIN=${SMTP_LOGIN}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
+    volumes:
+      - ./service_notify:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - rabbitmq
+    networks:
+      - app-network
 
   api_gateway:
     build: ./api_gateway
@@ -27,43 +109,15 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - service_users
-      # - service_orders
-
-  service_users:
-    build: ./service_users
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/users_db  # 👈 Исправь пароль
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - JWT_ALGORITHM=${JWT_ALGORITHM}
-      - ACC_TOKEN_EXP_MIN=${ACC_TOKEN_EXP_MIN}
-      - ORDERS_SERVICE_URL=http://service_orders:8000
-    volumes:
-      - ./service_users:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    depends_on:
-      - postgres
-
-  # service_orders:
-  #   build: ./service_orders
-  #   environment:
-  #     - DATABASE_URL=postgresql+asyncpg://admin:${POSTGRES_PASSWORD}@postgres:5432/orders_db  # 👈 Исправь пароль
-  #     - USERS_SERVICE_URL=http://service_users:8000
-  #   volumes:
-  #     - ./service_orders:/app
-  #   command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-  #   depends_on:
-  #     - postgres
-  #     - service_users
-
-
-  redis:
-    image: redis:7
-    ports:
-    - "6379"
-    command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - redis_data:/data
+      - redis
+    networks:
+      - app-network
 
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq_data:
+
+networks:
+  app-network:
+    driver: bridge
