@@ -1,80 +1,102 @@
 import { computed, ref } from 'vue'
 import { applyDevAuthSession } from '../config/devAuth'
-
-const STORAGE_KEY = 'studentpass_session'
+import {
+  getCurrentUser,
+  loginUser,
+  logoutUser,
+  registerPartner,
+  registerUser,
+  verifyEmailCode,
+} from '../services/authService'
 
 const user = ref(null)
 let storageLoaded = false
 
-function readStorage() {
-  if (storageLoaded || typeof localStorage === 'undefined') return
-  storageLoaded = true
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) user.value = JSON.parse(raw)
-  } catch {
-    /* ignore */
+function toUiUser(apiUser) {
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    displayName: apiUser.full_name || apiUser.email,
+    role: apiUser.role,
+    isActive: apiUser.is_active,
   }
+}
+
+async function readStorage() {
+  if (storageLoaded) return
+  storageLoaded = true
+
   applyDevAuthSession(user)
+  if (user.value) return
+
+  try {
+    const apiUser = await getCurrentUser()
+    user.value = toUiUser(apiUser)
+  } catch {
+    user.value = null
+  }
 }
 
-function writeStorage() {
-  if (typeof localStorage === 'undefined') return
-  if (user.value) localStorage.setItem(STORAGE_KEY, JSON.stringify(user.value))
-  else localStorage.removeItem(STORAGE_KEY)
+function mapLoginValue(value) {
+  const v = String(value || '').trim().toLowerCase()
+  if (v === 'admin') return 'admin@studentpass.local'
+  if (v === 'manager' || v === 'partner') return 'partner@studentpass.local'
+  return String(value || '').trim()
 }
 
-export function roleFromEmail(email) {
-  const e = String(email).trim().toLowerCase()
-  if (e.startsWith('admin@')) return 'admin'
-  if (e.startsWith('manager@')) return 'manager'
-  return 'user'
-}
-
-function roleFromCredentials(login, password) {
-  const l = String(login).trim().toLowerCase()
-  const p = String(password).trim().toLowerCase()
-  if (l === 'admin' && p === 'admin') return 'admin'
-  if (l === 'manager' && p === 'manager') return 'manager'
-  return null
+function isPartnerRole(role) {
+  return role === 'partner' || role === 'manager'
 }
 
 export function useSession() {
-  readStorage()
+  void readStorage()
 
   const isLoggedIn = computed(() => !!user.value)
   const isAdmin = computed(() => user.value?.role === 'admin')
-  const isManager = computed(() => user.value?.role === 'manager')
+  const isManager = computed(() => isPartnerRole(user.value?.role))
 
-  function login({ email, password = '', displayName }) {
-    const loginValue = String(email).trim()
-    const roleByCredentials = roleFromCredentials(loginValue, password)
-    const role = roleByCredentials || roleFromEmail(loginValue)
-    const profileNameByRole = role === 'admin' ? 'Администратор' : role === 'manager' ? 'Компания Manager' : null
-    const fallbackDisplayName = loginValue.includes('@') ? loginValue.split('@')[0] : loginValue
-
-    user.value = {
-      email: loginValue.includes('@') ? loginValue : `${loginValue || role}@studentpass.local`,
-      displayName: displayName?.trim() || profileNameByRole || fallbackDisplayName || 'Пользователь',
-      role,
-    }
-    writeStorage()
+  async function login({ email, password = '' }) {
+    await loginUser({ email: mapLoginValue(email), password })
+    const apiUser = await getCurrentUser()
+    user.value = toUiUser(apiUser)
     return user.value
   }
 
-  function register({ email, name }) {
-    const e = email.trim()
-    user.value = {
-      email: e,
-      displayName: name?.trim() || e.split('@')[0],
-      role: roleFromEmail(e),
+  async function register({ email, name, password = 'studentpass', companyName = '', phone = '', partner = false }) {
+    if (partner) {
+      await registerPartner({
+        email: String(email || '').trim(),
+        password,
+        full_name: String(name || '').trim(),
+        company_name: String(companyName || '').trim() || 'Компания',
+        phone: String(phone || '').trim() || '+7 (000) 000-00-00',
+      })
+    } else {
+      await registerUser({
+        email: String(email || '').trim(),
+        password,
+        full_name: String(name || '').trim(),
+      })
     }
-    writeStorage()
   }
 
-  function logout() {
+  async function verifyEmail({ email, code }) {
+    await verifyEmailCode({
+      email: String(email || '').trim(),
+      code: String(code || '').trim(),
+    })
+    const apiUser = await getCurrentUser()
+    user.value = toUiUser(apiUser)
+    return user.value
+  }
+
+  async function logout() {
+    try {
+      await logoutUser()
+    } catch {
+      /* noop */
+    }
     user.value = null
-    writeStorage()
   }
 
   return {
@@ -84,6 +106,7 @@ export function useSession() {
     isManager,
     login,
     register,
+    verifyEmail,
     logout,
     readStorage,
   }

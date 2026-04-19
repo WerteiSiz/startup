@@ -10,8 +10,8 @@ const displayRole = computed(() =>
   user.value?.role === 'admin' ? 'Администратор' : user.value?.displayName || 'Пользователь',
 )
 
-function handleLogout() {
-  logout()
+async function handleLogout() {
+  await logout()
   router.push({ name: 'home' })
 }
 </script>

@@ -7,10 +7,10 @@ const router = useRouter()
 const { openRegister, openLogin } = useAuthModal()
 const { user, isLoggedIn, isAdmin, isManager, logout } = useSession()
 
-function handleLogout() {
+async function handleLogout() {
   const path = router.currentRoute.value.path
   const leaveCabinet = path.startsWith('/admin') || path.startsWith('/manager')
-  logout()
+  await logout()
   if (leaveCabinet) router.push({ name: 'home' })
 }
 </script>

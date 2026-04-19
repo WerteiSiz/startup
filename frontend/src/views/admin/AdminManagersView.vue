@@ -1,8 +1,43 @@
 <script setup>
-import { managers, partnerCompaniesTable } from '../../data/adminMock'
+import { computed, onMounted, ref } from 'vue'
 import { useAdminPartnerModals } from '../../composables/useAdminPartnerModals'
+import { getAdminUsers } from '../../services/adminService'
+import { apiRequest } from '../../services/apiClient'
 
 const { openAddManager, openCreateCompany } = useAdminPartnerModals()
+const managers = ref([])
+const partnerCompaniesTable = ref([])
+
+const managersUi = computed(() => managers.value)
+const companiesUi = computed(() => partnerCompaniesTable.value)
+
+async function loadData() {
+  const [usersResponse, partnersResponse] = await Promise.all([
+    getAdminUsers({ role: 'partner', limit: 100 }),
+    apiRequest('/api/v1/partners'),
+  ])
+
+  managers.value = (usersResponse?.items || []).map((user) => ({
+    id: String(user.id),
+    name: user.full_name || user.email,
+    email: user.email,
+    phone: '—',
+    assigned: user.created_at ? new Date(user.created_at).toLocaleDateString('ru-RU') : '—',
+    companies: [],
+  }))
+
+  partnerCompaniesTable.value = (partnersResponse || []).map((row) => ({
+    company: row.company_name,
+    email: '—',
+    manager: 'Партнер',
+    discounts: row.ads_count || 0,
+    clicks: '—',
+  }))
+}
+
+onMounted(() => {
+  void loadData()
+})
 </script>
 
 <template>
@@ -26,7 +61,7 @@ const { openAddManager, openCreateCompany } = useAdminPartnerModals()
     </header>
 
     <section class="admin-managers-list">
-      <article v-for="m in managers" :key="m.id" class="admin-manager-card">
+      <article v-for="m in managersUi" :key="m.id" class="admin-manager-card">
         <div class="admin-manager-card__top">
           <h2>{{ m.name }}</h2>
           <div class="admin-manager-tools">
@@ -67,7 +102,7 @@ const { openAddManager, openCreateCompany } = useAdminPartnerModals()
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in partnerCompaniesTable" :key="row.company">
+            <tr v-for="row in companiesUi" :key="row.company">
               <td>{{ row.company }}</td>
               <td>{{ row.email }}</td>
               <td>{{ row.manager }}</td>

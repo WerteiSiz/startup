@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { applications } from '../../data/adminMock'
+import { computed, onMounted, ref } from 'vue'
+import { getPartnerRequests, updatePartnerRequest } from '../../services/adminService'
 
 const filter = ref('all')
+const applications = ref([])
 
 const filterOptions = [
   { key: 'all', label: 'Все' },
@@ -12,8 +13,8 @@ const filterOptions = [
 ]
 
 const visible = computed(() => {
-  if (filter.value === 'all') return applications
-  return applications.filter((a) => a.status === filter.value)
+  if (filter.value === 'all') return applications.value
+  return applications.value.filter((a) => a.status === filter.value)
 })
 
 const statusLabel = (s) => {
@@ -27,6 +28,38 @@ const statusClass = (s) => {
   if (s === 'approved') return 'admin-badge--ok'
   return 'admin-badge--bad'
 }
+
+function formatDate(value) {
+  if (!value) return '-'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('ru-RU')
+}
+
+async function loadApplications() {
+  const response = await getPartnerRequests({ limit: 100 })
+  applications.value = (response?.items || []).map((item) => ({
+    id: String(item.id),
+    company: item.company_name,
+    status: item.status,
+    contact: item.contact_person,
+    position: '—',
+    email: '—',
+    phone: item.phone,
+    offer: item.description || 'Описание не указано',
+    submitted: formatDate(item.created_at),
+    resolved: item.status === 'pending' ? '' : formatDate(item.created_at),
+    reason: item.admin_comment || '',
+  }))
+}
+
+async function resolveRequest(id, status) {
+  await updatePartnerRequest(id, { status })
+  await loadApplications()
+}
+
+onMounted(() => {
+  void loadApplications()
+})
 </script>
 
 <template>
@@ -65,8 +98,12 @@ const statusClass = (s) => {
             <span class="admin-badge" :class="statusClass(app.status)">{{ statusLabel(app.status) }}</span>
           </div>
           <div v-if="app.status === 'pending'" class="admin-app-actions">
-            <button type="button" class="admin-btn admin-btn--ok">✓ Одобрить</button>
-            <button type="button" class="admin-btn admin-btn--bad">✕ Отклонить</button>
+            <button type="button" class="admin-btn admin-btn--ok" @click="resolveRequest(app.id, 'approved')">
+              ✓ Одобрить
+            </button>
+            <button type="button" class="admin-btn admin-btn--bad" @click="resolveRequest(app.id, 'rejected')">
+              ✕ Отклонить
+            </button>
           </div>
         </div>
 

@@ -119,17 +119,20 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const { user, readStorage } = useSession()
-  readStorage()
-  if (to.matched.some((r) => r.meta.requiresAdmin)) {
-    if (!user.value || user.value.role !== 'admin') {
-      return { name: 'home' }
+  return readStorage().then(() => {
+    if (to.matched.some((r) => r.meta.requiresAdmin)) {
+      if (!user.value || user.value.role !== 'admin') {
+        return { name: 'home' }
+      }
     }
-  }
-  if (to.matched.some((r) => r.meta.requiresManager)) {
-    if (!user.value || user.value.role !== 'manager') {
-      return { name: 'home' }
+    if (to.matched.some((r) => r.meta.requiresManager)) {
+      const role = user.value?.role
+      if (!user.value || (role !== 'manager' && role !== 'partner')) {
+        return { name: 'home' }
+      }
     }
-  }
+    return true
+  })
 })
 
 export default router

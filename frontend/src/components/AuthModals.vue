@@ -7,6 +7,7 @@ import { useSession } from '../composables/useSession'
 const router = useRouter()
 const { openMode, close, openLogin, openRegister } = useAuthModal()
 const { login, register } = useSession()
+const authError = ref('')
 
 const regName = ref('')
 const regEmail = ref('')
@@ -24,20 +25,32 @@ watch(openMode, (mode) => {
   document.body.style.overflow = mode ? 'hidden' : ''
 })
 
-function submitRegister() {
-  register({ email: regEmail.value, name: regName.value })
-  close()
-  const role = roleFromEmail(regEmail.value)
-  if (role === 'admin') router.push({ name: 'admin-dashboard' })
-  else if (role === 'manager') router.push({ name: 'manager-discounts' })
+async function submitRegister() {
+  authError.value = ''
+  try {
+    await register({
+      email: regEmail.value,
+      name: regName.value,
+      password: regPass.value,
+    })
+    close()
+    openLogin()
+  } catch (error) {
+    authError.value = error instanceof Error ? error.message : 'Не удалось зарегистрироваться'
+  }
 }
 
-function submitLogin() {
-  const currentUser = login({ email: loginEmail.value, password: loginPass.value })
-  close()
-  const role = currentUser?.role
-  if (role === 'admin') router.push({ name: 'admin-dashboard' })
-  else if (role === 'manager') router.push({ name: 'manager-discounts' })
+async function submitLogin() {
+  authError.value = ''
+  try {
+    const currentUser = await login({ email: loginEmail.value, password: loginPass.value })
+    close()
+    const role = currentUser?.role
+    if (role === 'admin') router.push({ name: 'admin-dashboard' })
+    else if (role === 'partner' || role === 'manager') router.push({ name: 'manager-discounts' })
+  } catch (error) {
+    authError.value = error instanceof Error ? error.message : 'Не удалось выполнить вход'
+  }
 }
 
 onMounted(() => window.addEventListener('keydown', onKeydown))
@@ -112,6 +125,7 @@ onUnmounted(() => {
             </div>
 
             <button type="submit" class="auth-submit">Продолжить</button>
+            <p v-if="authError" class="auth-hint">{{ authError }}</p>
           </form>
 
           <p class="auth-switch">
@@ -148,6 +162,7 @@ onUnmounted(() => {
             </div>
 
             <button type="submit" class="auth-submit">Войти</button>
+            <p v-if="authError" class="auth-hint">{{ authError }}</p>
           </form>
 
           <p class="auth-switch">

@@ -1,11 +1,16 @@
 <script setup>
+import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useManagerDiscounts } from '../../composables/useManagerDiscounts'
 
-const { items: managerDiscounts, deleteDiscount } = useManagerDiscounts()
+const { items: managerDiscounts, deleteDiscount, load } = useManagerDiscounts()
 
-function handleDelete(id) {
-  deleteDiscount(id)
+onMounted(() => {
+  void load()
+})
+
+async function handleDelete(id) {
+  await deleteDiscount(id)
 }
 </script>
 

@@ -1,12 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { managerCategories } from '../../data/managerMock'
 import { useManagerDiscounts } from '../../composables/useManagerDiscounts'
 
 const route = useRoute()
 const router = useRouter()
-const { getById, createDiscount, updateDiscount } = useManagerDiscounts()
+const { getById, createDiscount, updateDiscount, categoryNames, load } = useManagerDiscounts()
 
 const discountId = computed(() => String(route.params.id || ''))
 const editingDiscount = computed(() => (discountId.value ? getById(discountId.value) : null))
@@ -17,7 +16,7 @@ const description = ref(
   editingDiscount.value?.description || 'Подробное описание скидки и условий получения...',
 )
 const percent = ref(editingDiscount.value?.percentNumber ?? 15)
-const category = ref(editingDiscount.value?.category || managerCategories[0])
+const category = ref(editingDiscount.value?.category || 'Прочее')
 const linkUrl = ref(editingDiscount.value?.linkUrl || '')
 const emoji = ref(editingDiscount.value?.emoji || '🍔')
 
@@ -25,7 +24,22 @@ const previewTitle = computed(() => title.value.trim() || 'Название ск
 const previewDesc = computed(() => description.value.trim() || 'Описание скидки...')
 const previewEmoji = computed(() => emoji.value.trim() || '📋')
 
-function submitForm() {
+onMounted(async () => {
+  await load()
+  const current = discountId.value ? getById(discountId.value) : null
+  if (current) {
+    title.value = current.title
+    description.value = current.description
+    percent.value = current.percentNumber
+    category.value = current.category
+    linkUrl.value = current.linkUrl
+  }
+  if (!category.value && categoryNames.value.length) {
+    category.value = categoryNames.value[0]
+  }
+})
+
+async function submitForm() {
   const payload = {
     title: title.value,
     description: description.value,
@@ -35,8 +49,8 @@ function submitForm() {
     emoji: emoji.value,
   }
 
-  if (isEditMode.value) updateDiscount(discountId.value, payload)
-  else createDiscount(payload)
+  if (isEditMode.value) await updateDiscount(discountId.value, payload)
+  else await createDiscount(payload)
 
   router.push({ name: 'manager-discounts' })
 }
@@ -93,7 +107,7 @@ function submitForm() {
             <label class="mgr-form-label" for="offer-cat">🏷 Категория</label>
             <div class="mgr-form-select-wrap">
               <select id="offer-cat" v-model="category" class="mgr-form-select">
-                <option v-for="c in managerCategories" :key="c" :value="c">{{ c }}</option>
+                <option v-for="c in categoryNames" :key="c" :value="c">{{ c }}</option>
               </select>
             </div>
           </div>
