@@ -141,6 +141,7 @@ async def delete_email_verification(db: AsyncSession, email: str):
     await db.commit()
 
 
+
 # ==================== Partner Requests ====================
 
 async def create_partner_request(
