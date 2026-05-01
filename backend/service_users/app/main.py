@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, Response, Request
+import asyncio
+from fastapi import Body, FastAPI, Depends, HTTPException, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
@@ -11,6 +12,7 @@ from .database import get_db, create_tables
 from . import crud
 from .schemas import *
 from .security import *
+from .crud import *
 
 
 from faststream.rabbit import RabbitBroker
@@ -18,7 +20,6 @@ from faststream.rabbit import RabbitBroker
 broker = RabbitBroker("amqp://guest:guest@rabbitmq:5672/")
 
 # ==================== Lifespan ====================
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("🔄 Начинаем создание таблиц...", file=sys.stderr)
@@ -26,10 +27,23 @@ async def lifespan(app: FastAPI):
         await create_tables()
         print("✅ Таблицы созданы/проверены", file=sys.stderr)
 
-        # Подключаем брокера
+        # Подключаем брокера С ПОВТОРНЫМИ ПОПЫТКАМИ
         print("🔄 Подключение к RabbitMQ...", file=sys.stderr)
-        await broker.connect()  # 👈 ВАЖНО: сначала connect()
-        print("✅ Брокер подключен", file=sys.stderr)
+        
+        max_retries = 30
+        for attempt in range(max_retries):
+            try:
+                await broker.connect()
+                print("✅ Брокер подключен", file=sys.stderr)
+                break
+            except Exception as e:
+                print(f"❌ Попытка {attempt + 1}/{max_retries} не удалась: {e}", file=sys.stderr)
+                if attempt < max_retries - 1:
+                    print(f"⏳ Повтор через 2 секунды...", file=sys.stderr)
+                    await asyncio.sleep(2)
+                else:
+                    print("❌ Не удалось подключиться к RabbitMQ после всех попыток", file=sys.stderr)
+                    raise
         
         # Объявляем очередь
         from faststream.rabbit import RabbitQueue
@@ -135,52 +149,76 @@ async def health():
 
 
 # ==================== Auth Routes ====================
+@app.post("/api/v1/auth/send_code", response_model=MessageResponse)
+async def send_code(
+    email: str = Body(..., embed=True),
+    db: AsyncSession = Depends(get_db)
+):
+    print(123123, file=sys.stderr)
+    # Проверяем, существует ли пользователь (включая неактивных)
+    existing_user = await crud.get_user_by_email_including_inactive(db, email)
+    if existing_user:
+        if not existing_user.is_active:
+            raise HTTPException(status_code=400, detail="Этот email был удалён. Восстановление невозможно, зарегистрируйтесь с другим email")
+        raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
+        
+    # Генерируем код подтверждения (6 цифр)
+    import random
+    code = f"{random.randint(100000, 999999)}"
+    
+    # Сохраняем код в email_verifications
+    await crud.create_email_verification(db, email, code)
+    
+    print(f"📧 Код подтверждения для {email}: {code}")
+
+    email_data = {
+        "email": email,
+        "subject": "Добро пожаловать в StudentPass!",
+        "message": f"{code} - Ваш код для регистрации на платформе студенческих скидок StudentPass",
+    }
+    
+    await broker.publish(email_data, queue="email_queue")
+    
+    return MessageResponse(message="Код подтверждения отправлен на почту")
+
+
 
 @app.post("/api/v1/auth/register", response_model=MessageResponse)
 async def register_user(
     data: UserRegister,
     db: AsyncSession = Depends(get_db)
 ):
-    # Проверяем, существует ли пользователь (включая неактивных)
-    existing_user = await crud.get_user_by_email_including_inactive(db, data.email)
-    if existing_user:
-        if not existing_user.is_active:
-            raise HTTPException(status_code=400, detail="Этот email был удалён. Восстановление невозможно, зарегистрируйтесь с другим email")
-        raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
+    res = await crud.get_email_verification(db, data.email, str(data.code))
+    print('--------------', res, file = sys.stderr)
     
-    # Хешируем пароль
-    hashed_password = get_password_hash(data.password)
-    
-    # Создаём пользователя
-    new_user = await crud.create_user(
-        db=db,
-        email=data.email,
-        password_hash=hashed_password,
-        full_name=data.full_name,
-        role=UserRole.USER
-    )
-    
-    # Генерируем код подтверждения (6 цифр)
-    import random
-    code = f"{random.randint(100000, 999999)}"
-    
-    # Сохраняем код в email_verifications
-    await crud.create_email_verification(db, new_user.id, code)
-    
-    # TODO: Отправить код на email (пока просто логируем)
-    print(f"📧 Код подтверждения для {data.email}: {code}")
+    if res:
 
-    email_data = {
-        "email": new_user.email,
-        "full_name": new_user.full_name,
-        "subject": "Добро пожаловать в StudentPass!",
-        "message": "Вы успешно зарегистрировались в платформе студенческих скидок StudentPass",
-        "code": code
-    }
+        # Проверяем, существует ли пользователь (включая неактивных)
+        existing_user = await crud.get_user_by_email_including_inactive(db, data.email)
+        if existing_user:
+            if not existing_user.is_active:
+                raise HTTPException(status_code=400, detail="Этот email был удалён. Восстановление невозможно, зарегистрируйтесь с другим email")
+            raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
+        
+        # Хешируем пароль
+        hashed_password = get_password_hash(data.password)
+        
+        # Создаём пользователя
+        new_user = await crud.create_user(
+            db=db,
+            email=data.email,
+            password_hash=hashed_password,
+            full_name=data.full_name,
+            role=UserRole.USER
+        )
+
+        await crud.delete_email_verification(db, data.email)
+        
+        return MessageResponse(message="Вы успешно зарегистрировались!")
     
-    await broker.publish(email_data, queue="email_queue")
-    
-    return MessageResponse(message="Код подтверждения отправлен на почту")
+    else:
+        return MessageResponse(message="Код не подходит! Попробуйте еще раз")
+
 
 
 @app.post("/api/v1/auth/register-partner", response_model=MessageResponse)
@@ -227,46 +265,46 @@ async def register_partner(
     "После подтверждения email и одобрения администратором вы сможете размещать объявления")
 
 
-@app.post("/api/v1/auth/verify-email", response_model=TokenResponse)
-async def verify_email(
-    data: EmailVerify,
-    response: Response,
-    db: AsyncSession = Depends(get_db)
-):
-    # Находим верификацию
-    verification = await crud.get_email_verification(db, data.email, data.code)
-    if not verification:
-        raise HTTPException(status_code=400, detail="Неверный или истёкший код")
+# @app.post("/api/v1/auth/verify-email", response_model=TokenResponse)
+# async def verify_email(
+#     data: EmailVerify,
+#     response: Response,
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     # Находим верификацию
+#     verification = await crud.get_email_verification(db, data.email, data.code)
+#     if not verification:
+#         raise HTTPException(status_code=400, detail="Неверный или истёкший код")
     
-    # Получаем пользователя
-    user = await crud.get_user_by_email_including_inactive(db, data.email)
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
+#     # Получаем пользователя
+#     user = await crud.get_user_by_email_including_inactive(db, data.email)
+#     if not user:
+#         raise HTTPException(status_code=404, detail="Пользователь не найден")
     
-    # Удаляем код верификации
-    await crud.delete_email_verification(db, verification.id)
+#     # Удаляем код верификации
+#     await crud.delete_email_verification(db, verification.id)
     
-    # Создаём токен
-    token_data = {
-        "sub": user.email,
-        "user_id": user.id,
-        "role": user.role,
-        "full_name": user.full_name
-    }
-    access_token = create_access_token(data=token_data)
+#     # Создаём токен
+#     token_data = {
+#         "sub": user.email,
+#         "user_id": user.id,
+#         "role": user.role,
+#         "full_name": user.full_name
+#     }
+#     access_token = create_access_token(data=token_data)
     
-    # Устанавливаем cookie
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=60 * int(os.getenv('ACC_TOKEN_EXP_MIN', 60)),
-        path="/"
-    )
+#     # Устанавливаем cookie
+#     response.set_cookie(
+#         key="access_token",
+#         value=access_token,
+#         httponly=True,
+#         secure=False,
+#         samesite="lax",
+#         max_age=60 * int(os.getenv('ACC_TOKEN_EXP_MIN', 60)),
+#         path="/"
+#     )
     
-    return TokenResponse(access_token=access_token)
+#     return TokenResponse(access_token=access_token)
 
 
 @app.post("/api/v1/auth/login", response_model=TokenResponse)

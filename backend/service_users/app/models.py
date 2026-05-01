@@ -29,19 +29,16 @@ class User(Base):
     partner_request = relationship("PartnerRequest", back_populates="user", uselist=False)
     partner = relationship("Partner", back_populates="user", uselist=False)
     favorites = relationship("Favorite", back_populates="user")
-    email_verifications = relationship("EmailVerification", back_populates="user")
 
 
 class EmailVerification(Base):
     __tablename__ = "email_verifications"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_email = Column(String, nullable=False)
     code = Column(String(6), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    user = relationship("User", back_populates="email_verifications")
 
 
 class PartnerRequestStatus(str, enum.Enum):

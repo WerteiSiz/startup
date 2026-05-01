@@ -40,7 +40,7 @@ async def auth_middleware(request: Request, call_next):
     public_paths = [
         '/', '/login', '/register', '/api/v1/health',
         '/api/v1/login',
-        '/api/v1/auth/register'
+        '/api/v1/auth/register', '/api/v1/auth/send_code'
     ]
 
 

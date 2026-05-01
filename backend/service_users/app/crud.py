@@ -1,4 +1,5 @@
-from sqlalchemy import select, func, and_, or_
+import sys
+from sqlalchemy import delete, select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone, timedelta
@@ -100,13 +101,13 @@ async def soft_delete_user(db: AsyncSession, user_id: int) -> Optional[User]:
 
 async def create_email_verification(
     db: AsyncSession,
-    user_id: int,
+    email: str,
     code: str,
     expires_minutes: int = 15
 ) -> EmailVerification:
     expires_at = datetime.utcnow() + timedelta(minutes=expires_minutes)
     verification = EmailVerification(
-        user_id=user_id,
+        user_email=email,
         code=code,
         expires_at=expires_at
     )
@@ -121,24 +122,21 @@ async def get_email_verification(
     email: str,
     code: str
 ) -> Optional[EmailVerification]:
-    # Сначала находим пользователя по email
-    user = await get_user_by_email_including_inactive(db, email)
-    if not user:
-        return None
     
     result = await db.execute(
         select(EmailVerification).where(
-            EmailVerification.user_id == user.id,
+            EmailVerification.user_email == email,
             EmailVerification.code == code,
             EmailVerification.expires_at > datetime.utcnow()
         )
     )
+
     return result.scalar_one_or_none()
 
 
-async def delete_email_verification(db: AsyncSession, verification_id: int):
+async def delete_email_verification(db: AsyncSession, email: str):
     await db.execute(
-        select(EmailVerification).where(EmailVerification.id == verification_id).delete()
+        delete(EmailVerification).where(EmailVerification.user_email == email)
     )
     await db.commit()
 
