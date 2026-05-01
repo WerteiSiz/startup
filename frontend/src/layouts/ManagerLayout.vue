@@ -6,10 +6,10 @@ import { useSession } from '../composables/useSession'
 const router = useRouter()
 const { user, logout } = useSession()
 
-const profileLabel = computed(() => 'Компания Manager')
+const profileLabel = computed(() => user.value?.displayName || 'Компания')
 
-function handleLogout() {
-  logout()
+async function handleLogout() {
+  await logout()
   router.push({ name: 'home' })
 }
 </script>

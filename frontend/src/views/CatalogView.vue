@@ -2,10 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import SitePublicHeader from '../components/SitePublicHeader.vue'
-import { getCatalogItems } from '../services/catalogService'
-import { managerCategories } from '../data/managerMock'
+import { getCatalogCategories, getCatalogItems } from '../services/catalogService'
 
-const categories = ['Все', ...managerCategories]
+const categories = ref(['Все'])
 
 const search = ref('')
 const sortBy = ref('По умолчанию')
@@ -42,7 +41,9 @@ const visibleItems = computed(() => {
 const freeCount = computed(() => items.value.filter((item) => item.isFree).length)
 
 onMounted(async () => {
-  items.value = await getCatalogItems()
+  const [catalogItems, apiCategories] = await Promise.all([getCatalogItems(), getCatalogCategories()])
+  items.value = catalogItems
+  categories.value = ['Все', ...apiCategories]
 })
 </script>
 
