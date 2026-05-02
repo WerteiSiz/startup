@@ -6,7 +6,7 @@ import {
   logoutUser,
   registerPartner,
   registerUser,
-  verifyEmailCode,
+  sendRegistrationCode,
 } from '../services/authService'
 
 const user = ref(null)
@@ -62,7 +62,19 @@ export function useSession() {
     return user.value
   }
 
-  async function register({ email, name, password = 'studentpass', companyName = '', phone = '', partner = false }) {
+  async function requestRegistrationCode({ email }) {
+    await sendRegistrationCode({ email: String(email || '').trim() })
+  }
+
+  async function register({
+    email,
+    name,
+    password = 'studentpass',
+    code,
+    companyName = '',
+    phone = '',
+    partner = false,
+  }) {
     if (partner) {
       await registerPartner({
         email: String(email || '').trim(),
@@ -71,23 +83,19 @@ export function useSession() {
         company_name: String(companyName || '').trim() || 'Компания',
         phone: String(phone || '').trim() || '+7 (000) 000-00-00',
       })
-    } else {
-      await registerUser({
-        email: String(email || '').trim(),
-        password,
-        full_name: String(name || '').trim(),
-      })
+      return
     }
-  }
-
-  async function verifyEmail({ email, code }) {
-    await verifyEmailCode({
+    const raw = String(code ?? '').replace(/\D/g, '')
+    const codeNum = Number.parseInt(raw, 10)
+    if (!Number.isFinite(codeNum) || raw.length !== 6) {
+      throw new Error('Введите 6-значный код из письма')
+    }
+    await registerUser({
       email: String(email || '').trim(),
-      code: String(code || '').trim(),
+      password,
+      full_name: String(name || '').trim(),
+      code: codeNum,
     })
-    const apiUser = await getCurrentUser()
-    user.value = toUiUser(apiUser)
-    return user.value
   }
 
   async function logout() {
@@ -106,7 +114,7 @@ export function useSession() {
     isManager,
     login,
     register,
-    verifyEmail,
+    requestRegistrationCode,
     logout,
     readStorage,
   }
