@@ -1445,6 +1445,28 @@ p {
   filter: brightness(1.05);
 }
 
+.auth-submit--secondary {
+  margin-top: 10px;
+  background: #f3f4f6;
+  color: #374151;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  font-weight: 600;
+}
+
+.auth-submit--secondary:hover:not(:disabled) {
+  filter: none;
+  background: #e5e7eb;
+}
+
+.auth-submit--secondary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.auth-hint--ok {
+  color: #059669;
+}
+
 .auth-switch {
   margin: 18px 0 0;
   text-align: center;
