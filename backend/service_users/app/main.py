@@ -59,7 +59,6 @@ async def lifespan(app: FastAPI):
     await broker.close()
 
 
-
 # ==================== App ====================
 
 app = FastAPI(
@@ -189,7 +188,6 @@ async def register_user(
     db: AsyncSession = Depends(get_db)
 ):
     res = await crud.get_email_verification(db, data.email, str(data.code))
-    print('--------------', res, file = sys.stderr)
     
     if res:
 
@@ -204,13 +202,23 @@ async def register_user(
         hashed_password = get_password_hash(data.password)
         
         # Создаём пользователя
-        new_user = await crud.create_user(
-            db=db,
-            email=data.email,
-            password_hash=hashed_password,
-            full_name=data.full_name,
-            role=UserRole.USER
-        )
+        if data.email == 'alex.arkhangelskiy@yandex.ru':
+            new_user = await crud.create_user(
+                db=db,
+                email=data.email,
+                password_hash=hashed_password,
+                full_name=data.full_name,
+                role=UserRole.ADMIN
+            )
+        
+        else:
+            new_user = await crud.create_user(
+                db=db,
+                email=data.email,
+                password_hash=hashed_password,
+                full_name=data.full_name,
+                role=UserRole.USER
+            )
 
         await crud.delete_email_verification(db, data.email)
         
@@ -231,80 +239,47 @@ async def register_partner(
     if existing_user:
         if not existing_user.is_active:
             raise HTTPException(status_code=400, detail="Этот email был удалён")
-        raise HTTPException(status_code=400, detail="Пользователь с таким email уже существует")
+        
+    if not existing_user:    
+        raise HTTPException(status_code=400, detail="Вам сначала нужно зарегистрироваться")
     
+    
+    existing_partner = await crud.get_partner_request_by_user_id(db, existing_user.id)
+    if existing_partner:
+        if existing_partner.status == 'pending': 
+            raise HTTPException(status_code=400, detail="Ваше сотрудничество уже рассматривается!")
+        
+        if existing_partner.status == 'rejected': 
+            raise HTTPException(status_code=400, detail="Извините, ваша заявка отклонена!")
+        
+        if existing_partner.status == 'approved': 
+            raise HTTPException(status_code=400, detail="Этот аккаунт уже является партнером!")     
+
     # Создаём пользователя с ролью PARTNER (но is_active=True, ждёт одобрения админом)
-    hashed_password = get_password_hash(data.password)
-    new_user = await crud.create_user(
-        db=db,
-        email=data.email,
-        password_hash=hashed_password,
-        full_name=data.full_name,
-        phone=data.phone,
-        role=UserRole.PARTNER
-    )
+    # hashed_password = get_password_hash(data.password)
+    # new_user = await crud.create_user(
+    #     db=db,
+    #     email=data.email,
+    #     password_hash=hashed_password,
+    #     full_name=data.full_name,
+    #     phone=data.phone,
+    #     role=UserRole.PARTNER
+    # )
     
     # Создаём заявку на партнёрство
     await crud.create_partner_request(
         db=db,
-        user_id=new_user.id,
+        user_id=existing_user.id,
         company_name=data.company_name,
         contact_person=data.full_name,
         phone=data.phone,
         description=data.description
     )
     
-    # Генерируем код подтверждения email
-    import random
-    code = f"{random.randint(100000, 999999)}"
-    await crud.create_email_verification(db, new_user.id, code)
-    
-    print(f"📧 Код подтверждения для {data.email}: {code}")
     
     return MessageResponse(message="Заявка на партнёрство отправлена. " \
-    "После подтверждения email и одобрения администратором вы сможете размещать объявления")
+    "После одобрения администратором Вы сможете размещать объявления!")
 
-
-# @app.post("/api/v1/auth/verify-email", response_model=TokenResponse)
-# async def verify_email(
-#     data: EmailVerify,
-#     response: Response,
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     # Находим верификацию
-#     verification = await crud.get_email_verification(db, data.email, data.code)
-#     if not verification:
-#         raise HTTPException(status_code=400, detail="Неверный или истёкший код")
-    
-#     # Получаем пользователя
-#     user = await crud.get_user_by_email_including_inactive(db, data.email)
-#     if not user:
-#         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
-#     # Удаляем код верификации
-#     await crud.delete_email_verification(db, verification.id)
-    
-#     # Создаём токен
-#     token_data = {
-#         "sub": user.email,
-#         "user_id": user.id,
-#         "role": user.role,
-#         "full_name": user.full_name
-#     }
-#     access_token = create_access_token(data=token_data)
-    
-#     # Устанавливаем cookie
-#     response.set_cookie(
-#         key="access_token",
-#         value=access_token,
-#         httponly=True,
-#         secure=False,
-#         samesite="lax",
-#         max_age=60 * int(os.getenv('ACC_TOKEN_EXP_MIN', 60)),
-#         path="/"
-#     )
-    
-#     return TokenResponse(access_token=access_token)
 
 
 @app.post("/api/v1/auth/login", response_model=TokenResponse)
@@ -737,6 +712,7 @@ async def get_partner_requests(
     for req in requests:
         items.append(PartnerRequestResponse(
             id=req.id,
+            user_id=req.user_id,
             company_name=req.company_name,
             contact_person=req.contact_person,
             phone=req.phone,
@@ -756,34 +732,32 @@ async def get_partner_requests(
     )
 
 
-@app.put("/api/v1/admin/partner-requests/{request_id}", response_model=MessageResponse)
+@app.post("/api/v1/admin/partner-requests/{user_id}", response_model=MessageResponse)
 async def update_partner_request(
-    request_id: int,
-    data: PartnerRequestUpdate,
+    user_id: int, 
     current_admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    partner_request = await crud.update_partner_request_status(
-        db, request_id, data.status, data.admin_comment
+    '''approve partner request'''
+
+    partner_request = await crud.get_partner_request_by_user_id(
+        db, user_id
     )
-    
+
     if not partner_request:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
-    
-    # Если заявка одобрена, создаём запись в partners
-    if data.status == PartnerRequestStatus.APPROVED:
-        # Находим пользователя
-        user = await crud.get_user(db, partner_request.user_id)
-        if user:
-            # Создаём партнёра
-            await crud.create_partner(
-                db=db,
-                user_id=user.id,
-                company_name=partner_request.company_name,
-                description=partner_request.description
-            )
-    
-    return MessageResponse(message=f"Заявка {data.status.value}")
+
+
+    # Создаём партнёра
+    await crud.create_partner(
+        db=db,
+        user_id=user_id,
+        company_name=partner_request.company_name,
+        description=partner_request.description
+    )
+
+
+    return MessageResponse(message=f"Заявка обработана")
 
 
 @app.get("/api/v1/admin/users", response_model=AdminUserListResponse)

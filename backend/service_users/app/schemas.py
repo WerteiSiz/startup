@@ -31,7 +31,6 @@ class UserRegister(BaseModel):
 
 class UserRegisterPartner(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=6)
     full_name: str = Field(..., min_length=1)
     company_name: str = Field(..., min_length=1)
     phone: str = Field(..., min_length=1)
@@ -214,6 +213,7 @@ class PartnerRequestCreate(BaseModel):
 
 class PartnerRequestResponse(BaseModel):
     id: int
+    user_id: int
     company_name: str
     contact_person: str
     phone: str

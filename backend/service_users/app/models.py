@@ -26,7 +26,6 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Связи
-    partner_request = relationship("PartnerRequest", back_populates="user", uselist=False)
     partner = relationship("Partner", back_populates="user", uselist=False)
     favorites = relationship("Favorite", back_populates="user")
 
@@ -51,7 +50,7 @@ class PartnerRequest(Base):
     __tablename__ = "partner_requests"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    user_id = Column(Integer, nullable=False)
     company_name = Column(String, nullable=False)
     contact_person = Column(String, nullable=False)
     phone = Column(String, nullable=False)
@@ -61,7 +60,6 @@ class PartnerRequest(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = relationship("User", back_populates="partner_request")
 
 
 class Partner(Base):

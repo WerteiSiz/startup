@@ -1,5 +1,5 @@
 import sys
-from sqlalchemy import delete, select, func, and_, or_
+from sqlalchemy import delete, select, func, and_, or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from datetime import datetime, timezone, timedelta
@@ -176,6 +176,7 @@ async def get_partner_request_by_user_id(
     return result.scalar_one_or_none()
 
 
+
 async def get_partner_requests(
     db: AsyncSession,
     status: Optional[PartnerRequestStatus] = None,
@@ -230,6 +231,13 @@ async def create_partner(
     logo_url: Optional[str] = None,
     ads_limit: int = 5
 ) -> Partner:
+    
+    await db.execute(
+        update(User)
+        .where(User.id == user_id)
+        .values(role=UserRole.PARTNER)
+    )
+
     partner = Partner(
         user_id=user_id,
         company_name=company_name,

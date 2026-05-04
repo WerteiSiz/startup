@@ -38,7 +38,7 @@ async def auth_middleware(request: Request, call_next):
         return await call_next(request)
     
     public_paths = [
-        '/', '/login', '/register', '/api/v1/health',
+        '/', '/api/v1/auth/login', '/register', '/api/v1/health',
         '/api/v1/login',
         '/api/v1/auth/register', '/api/v1/auth/send_code'
     ]
@@ -122,9 +122,9 @@ async def proxy_request(request: Request, path: str):
     
     if hasattr(request.state, 'user'):
         user_data = request.state.user
-        headers["X-User-ID"] = user_data.get("user_id", "")
-        headers["X-User-Email"] = user_data.get("sub", "")
-        headers["X-User-Roles"] = ",".join(user_data.get("roles", []))
+        headers["X-User-ID"] = str(user_data.get("user_id", ""))
+        headers["X-User-Email"] = str(user_data.get("sub", ""))
+        headers["X-User-Roles"] = str(",".join(user_data.get("roles", [])))
     
     body = await request.body()
     
