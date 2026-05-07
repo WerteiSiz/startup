@@ -146,14 +146,14 @@ async def delete_email_verification(db: AsyncSession, email: str):
 
 async def create_partner_request(
     db: AsyncSession,
-    user_id: int,
+    user_email: str,
     company_name: str,
     contact_person: str,
     phone: str,
     description: Optional[str] = None
 ) -> PartnerRequest:
     request = PartnerRequest(
-        user_id=user_id,
+        user_email=user_email,
         company_name=company_name,
         contact_person=contact_person,
         phone=phone,
@@ -166,12 +166,12 @@ async def create_partner_request(
     return request
 
 
-async def get_partner_request_by_user_id(
+async def get_partner_request_by_user_email(
     db: AsyncSession,
-    user_id: int
+    user_email: str
 ) -> Optional[PartnerRequest]:
     result = await db.execute(
-        select(PartnerRequest).where(PartnerRequest.user_id == user_id)
+        select(PartnerRequest).where(PartnerRequest.user_email == user_email)
     )
     return result.scalar_one_or_none()
 
@@ -199,33 +199,38 @@ async def get_partner_requests(
     return requests, total
 
 
-async def update_partner_request_status(
-    db: AsyncSession,
-    request_id: int,
-    status: PartnerRequestStatus,
-    admin_comment: Optional[str] = None
-) -> Optional[PartnerRequest]:
-    result = await db.execute(
-        select(PartnerRequest).where(PartnerRequest.id == request_id)
+# async def update_partner_request_status(
+#     db: AsyncSession,
+#     request_id: int,
+#     status: PartnerRequestStatus,
+#     admin_comment: Optional[str] = None
+# ) -> Optional[PartnerRequest]:
+#     result = await db.execute(
+#         select(PartnerRequest).where(PartnerRequest.id == request_id)
+#     )
+#     request = result.scalar_one_or_none()
+    
+#     if request:
+#         request.status = status
+#         if admin_comment:
+#             request.admin_comment = admin_comment
+#         request.updated_at = datetime.utcnow()
+#         await db.commit()
+#         await db.refresh(request)
+#     return request
+
+async def delete_partner_request_by_user_email(db: AsyncSession, user_email: str):
+    await db.execute(
+        delete(PartnerRequest).where(PartnerRequest.user_email == user_email)
     )
-    request = result.scalar_one_or_none()
-    
-    if request:
-        request.status = status
-        if admin_comment:
-            request.admin_comment = admin_comment
-        request.updated_at = datetime.utcnow()
-        await db.commit()
-        await db.refresh(request)
-    
-    return request
+    await db.commit()
 
 
 # ==================== Partners ====================
 
 async def create_partner(
     db: AsyncSession,
-    user_id: int,
+    user_email: str,
     company_name: str,
     description: Optional[str] = None,
     logo_url: Optional[str] = None,
@@ -234,12 +239,12 @@ async def create_partner(
     
     await db.execute(
         update(User)
-        .where(User.id == user_id)
+        .where(User.email == user_email)
         .values(role=UserRole.PARTNER)
     )
 
     partner = Partner(
-        user_id=user_id,
+        user_email=user_email,
         company_name=company_name,
         description=description,
         logo_url=logo_url,
@@ -252,9 +257,16 @@ async def create_partner(
     return partner
 
 
-async def get_partner_by_user_id(db: AsyncSession, user_id: int) -> Optional[Partner]:
+async def get_partner_by_user_email(db: AsyncSession, user_email: str) -> Optional[Partner]:
     result = await db.execute(
-        select(Partner).where(Partner.user_id == user_id)
+        select(Partner).where(Partner.user_email == user_email)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_partner_by_email(db: AsyncSession, partner_email: str) -> Optional[Partner]:
+    result = await db.execute(
+        select(Partner).where(Partner.user_email == partner_email, Partner.is_approved == True)
     )
     return result.scalar_one_or_none()
 
@@ -288,11 +300,11 @@ async def get_partners(
     return partners, total
 
 
-async def get_partner_ads_count(db: AsyncSession, partner_id: int) -> int:
-    result = await db.execute(
-        select(func.count()).where(Ad.partner_id == partner_id, Ad.is_active == True)
-    )
-    return result.scalar()
+# async def get_partner_ads_count(db: AsyncSession, partner_email: str) -> int:
+#     result = await db.execute(
+#         select(func.count()).where(Ad.partner_email == partner_email, Ad.is_active == True)
+#     )
+#     return result.scalar()
 
 
 # ==================== Categories ====================
@@ -337,7 +349,7 @@ async def get_categories(
 
 async def create_ad(
     db: AsyncSession,
-    partner_id: int,
+    partner_email: str,
     title: str,
     discount_percent: int,
     url: str,
@@ -349,7 +361,7 @@ async def create_ad(
     prioritet: int = 0
 ) -> Ad:
     ad = Ad(
-        partner_id=partner_id,
+        partner_email=partner_email,
         title=title,
         description=description,
         discount_percent=discount_percent,
@@ -376,7 +388,8 @@ async def create_ad(
 async def get_ad_by_id(db: AsyncSession, ad_id: int) -> Optional[Ad]:
     result = await db.execute(
         select(Ad)
-        .options(selectinload(Ad.categories))
+        .options(selectinload(Ad.categories), 
+                 selectinload(Ad.partner).selectinload(Partner.user))
         .where(Ad.id == ad_id, Ad.is_active == True, Ad.end_date > datetime.utcnow())
     )
     return result.scalar_one_or_none()
@@ -385,9 +398,10 @@ async def get_ad_by_id(db: AsyncSession, ad_id: int) -> Optional[Ad]:
 async def get_ads(
     db: AsyncSession,
     params: AdFilterParams,
-    user_id: Optional[int] = None
+    user_email: Optional[int] = None
 ) -> Tuple[List[Ad], int]:
-    query = select(Ad).options(selectinload(Ad.categories)).where(
+    query = select(Ad).options(selectinload(Ad.categories), 
+                               selectinload(Ad.partner).selectinload(Partner.user)).where(
         Ad.is_active == True,
         Ad.end_date > datetime.utcnow()
     )
@@ -423,9 +437,9 @@ async def get_ads(
     
     # Получаем избранное для пользователя
     favorites = set()
-    if user_id:
+    if user_email:
         fav_result = await db.execute(
-            select(Favorite.ad_id).where(Favorite.user_id == user_id)
+            select(Favorite.ad_id).where(Favorite.user_email == user_email)
         )
         favorites = {row[0] for row in fav_result.all()}
     
@@ -438,12 +452,13 @@ async def get_ads(
 
 async def get_ads_by_partner(
     db: AsyncSession,
-    partner_id: int,
+    partner_email: str,
     skip: int = 0,
     limit: int = 100,
     include_inactive: bool = False
 ) -> Tuple[List[Ad], int]:
-    query = select(Ad).where(Ad.partner_id == partner_id)
+    
+    query = select(Ad).where(Ad.partner_email == partner_email).options(selectinload(Ad.categories))
     
     if not include_inactive:
         query = query.where(Ad.is_active == True)
@@ -493,38 +508,35 @@ async def increment_ad_clicks(db: AsyncSession, ad_id: int) -> Optional[Ad]:
 
 
 async def delete_ad(db: AsyncSession, ad_id: int) -> bool:
-    result = await db.execute(select(Ad).where(Ad.id == ad_id))
-    ad = result.scalar_one_or_none()
-    
-    if ad:
-        ad.is_active = False
-        await db.commit()
-        return True
-    
-    return False
-
-
-async def get_partner_ads_count(db: AsyncSession, partner_id: int) -> int:
     result = await db.execute(
-        select(func.count()).where(Ad.partner_id == partner_id, Ad.is_active == True)
+        delete(Ad).where(Ad.id == ad_id)
+    )
+    await db.commit()
+    
+    return result.rowcount > 0
+
+
+async def get_partner_ads_count(db: AsyncSession, partner_email: str) -> int:
+    result = await db.execute(
+        select(func.count()).where(Ad.partner_email == partner_email, Ad.is_active == True)
     )
     return result.scalar()
 
 
 # ==================== Favorites ====================
 
-async def add_favorite(db: AsyncSession, user_id: int, ad_id: int) -> Favorite:
-    favorite = Favorite(user_id=user_id, ad_id=ad_id)
+async def add_favorite(db: AsyncSession, user_email: str, ad_id: int) -> Favorite:
+    favorite = Favorite(user_email=user_email, ad_id=ad_id)
     db.add(favorite)
     await db.commit()
     await db.refresh(favorite)
     return favorite
 
 
-async def remove_favorite(db: AsyncSession, user_id: int, ad_id: int) -> bool:
+async def remove_favorite(db: AsyncSession, user_email: str, ad_id: int) -> bool:
     result = await db.execute(
         select(Favorite).where(
-            Favorite.user_id == user_id,
+            Favorite.user_email == user_email,
             Favorite.ad_id == ad_id
         )
     )
@@ -540,15 +552,18 @@ async def remove_favorite(db: AsyncSession, user_id: int, ad_id: int) -> bool:
 
 async def get_favorites(
     db: AsyncSession,
-    user_id: int,
+    user_email: str,
     skip: int = 0,
     limit: int = 100
 ) -> Tuple[List[Ad], int]:
     query = select(Ad).join(Favorite).where(
-        Favorite.user_id == user_id,
+        Favorite.user_email == user_email,
         Ad.is_active == True,
         Ad.end_date > datetime.utcnow()
-    )
+    ).options(
+            selectinload(Ad.partner),       
+            selectinload(Ad.categories)   
+        )
     
     count_query = select(func.count()).select_from(query.subquery())
     total = await db.execute(count_query)
@@ -561,10 +576,10 @@ async def get_favorites(
     return ads, total
 
 
-async def is_favorite(db: AsyncSession, user_id: int, ad_id: int) -> bool:
+async def is_favorite(db: AsyncSession, user_email: str, ad_id: int) -> bool:
     result = await db.execute(
         select(Favorite).where(
-            Favorite.user_id == user_id,
+            Favorite.user_email == user_email,
             Favorite.ad_id == ad_id
         )
     )

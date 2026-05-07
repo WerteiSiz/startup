@@ -50,7 +50,7 @@ class PartnerRequest(Base):
     __tablename__ = "partner_requests"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, nullable=False)
+    user_email = Column(String, nullable=False)
     company_name = Column(String, nullable=False)
     contact_person = Column(String, nullable=False)
     phone = Column(String, nullable=False)
@@ -66,7 +66,7 @@ class Partner(Base):
     __tablename__ = "partners"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    user_email = Column(String, ForeignKey("users.email", ondelete="CASCADE"), nullable=False, unique=True)
     company_name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
@@ -93,7 +93,7 @@ class Ad(Base):
     __tablename__ = "ads"
     
     id = Column(Integer, primary_key=True, index=True)
-    partner_id = Column(Integer, ForeignKey("partners.id", ondelete="CASCADE"), nullable=False)
+    partner_email = Column(String, ForeignKey("partners.user_email", ondelete="CASCADE"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     discount_percent = Column(Integer, nullable=False)  # от 1 до 100
@@ -123,7 +123,7 @@ class Favorite(Base):
     __tablename__ = "favorites"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_email = Column(String, ForeignKey("users.email", ondelete="CASCADE"), nullable=False)
     ad_id = Column(Integer, ForeignKey("ads.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     

@@ -122,7 +122,7 @@ async def get_current_partner(
     if current_user.role != UserRole.PARTNER:
         raise HTTPException(status_code=403, detail="Доступ только для партнёров")
     
-    partner = await crud.get_partner_by_user_id(db, current_user.id)
+    partner = await crud.get_partner_by_user_email(db, current_user.email)
     if not partner or not partner.is_approved:
         raise HTTPException(status_code=403, detail="Партнёр не одобрен администратором")
     
@@ -153,7 +153,6 @@ async def send_code(
     email: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db)
 ):
-    print(123123, file=sys.stderr)
     # Проверяем, существует ли пользователь (включая неактивных)
     existing_user = await crud.get_user_by_email_including_inactive(db, email)
     if existing_user:
@@ -244,7 +243,7 @@ async def register_partner(
         raise HTTPException(status_code=400, detail="Вам сначала нужно зарегистрироваться")
     
     
-    existing_partner = await crud.get_partner_request_by_user_id(db, existing_user.id)
+    existing_partner = await crud.get_partner_request_by_user_email(db, existing_user.email)
     if existing_partner:
         if existing_partner.status == 'pending': 
             raise HTTPException(status_code=400, detail="Ваше сотрудничество уже рассматривается!")
@@ -269,12 +268,13 @@ async def register_partner(
     # Создаём заявку на партнёрство
     await crud.create_partner_request(
         db=db,
-        user_id=existing_user.id,
+        user_email=existing_user.email,
         company_name=data.company_name,
         contact_person=data.full_name,
         phone=data.phone,
         description=data.description
     )
+
     
     
     return MessageResponse(message="Заявка на партнёрство отправлена. " \
@@ -361,8 +361,8 @@ async def get_ads(
         limit=limit
     )
     
-    user_id = current_user.id if current_user else None
-    ads, total = await crud.get_ads(db, params, user_id)
+    user_email = current_user.email if current_user else None
+    ads, total = await crud.get_ads(db, params, user_email)
     
     # Формируем ответ
     items = []
@@ -376,7 +376,7 @@ async def get_ads(
             address=ad.address,
             end_date=ad.end_date,
             clicks_count=ad.clicks_count,
-            partner_id=ad.partner_id,
+            partner_email=ad.partner_email,
             partner_name=ad.partner.company_name,
             categories=[cat.name for cat in ad.categories],
             is_favorite=getattr(ad, 'is_favorite', False),
@@ -393,6 +393,12 @@ async def get_ads(
         pages=pages
     )
 
+@app.get("/api/v1/ads/categories", response_model=List[CategoryResponse])
+async def get_categories(
+    db: AsyncSession = Depends(get_db)
+):
+    categories, _ = await crud.get_categories(db)
+    return [CategoryResponse(id=cat.id, name=cat.name, is_custom=cat.is_custom) for cat in categories]
 
 @app.get("/api/v1/ads/{ad_id}", response_model=AdDetailResponse)
 async def get_ad_detail(
@@ -406,7 +412,7 @@ async def get_ad_detail(
     
     is_favorite = False
     if current_user:
-        is_favorite = await crud.is_favorite(db, current_user.id, ad_id)
+        is_favorite = await crud.is_favorite(db, current_user.email, ad_id)
     
     return AdDetailResponse(
         id=ad.id,
@@ -417,7 +423,7 @@ async def get_ad_detail(
         address=ad.address,
         end_date=ad.end_date,
         clicks_count=ad.clicks_count,
-        partner_id=ad.partner_id,
+        partner_email=ad.partner_email,
         partner_name=ad.partner.company_name,
         categories=[cat.name for cat in ad.categories],
         is_favorite=is_favorite,
@@ -426,7 +432,6 @@ async def get_ad_detail(
         created_at=ad.created_at,
         updated_at=ad.updated_at
     )
-
 
 @app.post("/api/v1/ads/{ad_id}/click")
 async def click_ad(
@@ -441,15 +446,6 @@ async def click_ad(
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=ad.url)
 
-
-@app.get("/api/v1/ads/categories", response_model=List[CategoryResponse])
-async def get_categories(
-    db: AsyncSession = Depends(get_db)
-):
-    categories, _ = await crud.get_categories(db)
-    return [CategoryResponse(id=cat.id, name=cat.name, is_custom=cat.is_custom) for cat in categories]
-
-
 # ==================== Favorites Routes ====================
 
 @app.get("/api/v1/favorites", response_model=FavoriteListResponse)
@@ -460,7 +456,7 @@ async def get_favorites(
     db: AsyncSession = Depends(get_db)
 ):
     skip = (page - 1) * limit
-    ads, total = await crud.get_favorites(db, current_user.id, skip, limit)
+    ads, total = await crud.get_favorites(db, current_user.email, skip, limit)
     
     items = []
     for ad in ads:
@@ -492,10 +488,10 @@ async def add_favorite(
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
     # Проверяем, не в избранном ли уже
-    if await crud.is_favorite(db, current_user.id, ad_id):
+    if await crud.is_favorite(db, current_user.email, ad_id):
         raise HTTPException(status_code=400, detail="Уже в избранном")
     
-    await crud.add_favorite(db, current_user.id, ad_id)
+    await crud.add_favorite(db, current_user.email, ad_id)
     return MessageResponse(message="Добавлено в избранное")
 
 
@@ -505,7 +501,7 @@ async def remove_favorite(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    removed = await crud.remove_favorite(db, current_user.id, ad_id)
+    removed = await crud.remove_favorite(db, current_user.email, ad_id)
     if not removed:
         raise HTTPException(status_code=404, detail="Объявление не найдено в избранном")
     
@@ -524,9 +520,10 @@ async def get_partners(
     
     result = []
     for partner in partners:
-        ads_count = await crud.get_partner_ads_count(db, partner.id)
+        ads_count = await crud.get_partner_ads_count(db, partner.user_email)
         result.append(PartnerResponse(
             id=partner.id,
+            email=partner.user_email,
             company_name=partner.company_name,
             description=partner.description,
             logo_url=partner.logo_url,
@@ -549,7 +546,7 @@ async def get_partner_ads(
         raise HTTPException(status_code=404, detail="Партнёр не найден")
     
     skip = (page - 1) * limit
-    ads, total = await crud.get_ads_by_partner(db, partner_id, skip, limit, include_inactive=False)
+    ads, total = await crud.get_ads_by_partner(db, partner.user_email, skip, limit, include_inactive=False)
     
     items = []
     for ad in ads:
@@ -562,7 +559,7 @@ async def get_partner_ads(
             address=ad.address,
             end_date=ad.end_date,
             clicks_count=ad.clicks_count,
-            partner_id=partner_id,
+            partner_email=partner.user_email,
             partner_name=partner.company_name,
             categories=[cat.name for cat in ad.categories],
             is_favorite=False,
@@ -590,9 +587,8 @@ async def get_my_ads(
     db: AsyncSession = Depends(get_db)
 ):
     skip = (page - 1) * limit
-    ads, total = await crud.get_ads_by_partner(db, current_partner.id, skip, limit, include_inactive=True)
-    ads_used = await crud.get_partner_ads_count(db, current_partner.id)
-    
+    ads, total = await crud.get_ads_by_partner(db, current_partner.user_email, skip, limit, include_inactive=True)
+    ads_used = await crud.get_partner_ads_count(db, current_partner.user_email)
     items = []
     for ad in ads:
         items.append(AdResponse(
@@ -604,7 +600,7 @@ async def get_my_ads(
             address=ad.address,
             end_date=ad.end_date,
             clicks_count=ad.clicks_count,
-            partner_id=current_partner.id,
+            partner_email=current_partner.user_email,
             partner_name=current_partner.company_name,
             categories=[cat.name for cat in ad.categories],
             is_favorite=False,
@@ -631,7 +627,7 @@ async def create_ad(
     db: AsyncSession = Depends(get_db)
 ):
     # Проверяем лимит объявлений
-    current_count = await crud.get_partner_ads_count(db, current_partner.id)
+    current_count = await crud.get_partner_ads_count(db, current_partner.user_email)
     if current_count >= current_partner.ads_limit:
         raise HTTPException(status_code=400, detail=f"Превышен лимит объявлений (максимум {current_partner.ads_limit})")
     
@@ -643,7 +639,7 @@ async def create_ad(
     
     await crud.create_ad(
         db=db,
-        partner_id=current_partner.id,
+        partner_email=current_partner.user_email,
         title=data.title,
         description=data.description,
         discount_percent=data.discount_percent,
@@ -667,7 +663,7 @@ async def update_ad(
 ):
     # Проверяем, что объявление принадлежит партнёру
     ad = await crud.get_ad_by_id(db, ad_id)
-    if not ad or ad.partner_id != current_partner.id:
+    if not ad or ad.partner_email != current_partner.user_email:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
     # Обновляем только переданные поля
@@ -688,7 +684,7 @@ async def delete_ad(
 ):
     # Проверяем, что объявление принадлежит партнёру
     ad = await crud.get_ad_by_id(db, ad_id)
-    if not ad or ad.partner_id != current_partner.id:
+    if not ad or ad.partner_email != current_partner.user_email:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
     
     await crud.delete_ad(db, ad_id)
@@ -712,7 +708,7 @@ async def get_partner_requests(
     for req in requests:
         items.append(PartnerRequestResponse(
             id=req.id,
-            user_id=req.user_id,
+            user_email=req.user_email,
             company_name=req.company_name,
             contact_person=req.contact_person,
             phone=req.phone,
@@ -732,16 +728,15 @@ async def get_partner_requests(
     )
 
 
-@app.post("/api/v1/admin/partner-requests/{user_id}", response_model=MessageResponse)
-async def update_partner_request(
-    user_id: int, 
+@app.post("/api/v1/admin/partner-requests/{user_email}", response_model=MessageResponse)
+async def approve_partner_request(
+    user_email: str, 
     current_admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db)
 ):
-    '''approve partner request'''
 
-    partner_request = await crud.get_partner_request_by_user_id(
-        db, user_id
+    partner_request = await crud.get_partner_request_by_user_email(
+        db, user_email
     )
 
     if not partner_request:
@@ -751,11 +746,12 @@ async def update_partner_request(
     # Создаём партнёра
     await crud.create_partner(
         db=db,
-        user_id=user_id,
+        user_email=user_email,
         company_name=partner_request.company_name,
         description=partner_request.description
     )
 
+    await crud.delete_partner_request_by_user_email(db, user_email)
 
     return MessageResponse(message=f"Заявка обработана")
 
@@ -793,16 +789,16 @@ async def get_users(
     )
 
 
-@app.put("/api/v1/admin/users/{user_id}/role", response_model=MessageResponse)
-async def change_user_role(
-    user_id: int,
-    data: AdminUserRoleUpdate,
-    current_admin: User = Depends(get_current_admin),
-    db: AsyncSession = Depends(get_db)
-):
-    # TODO: Реализовать смену роли
-    # Пока просто заглушка
-    return MessageResponse(message=f"Роль пользователя изменена на {data.role.value}")
+# @app.put("/api/v1/admin/users/{user_id}/role", response_model=MessageResponse)
+# async def change_user_role(
+#     user_id: int,
+#     data: AdminUserRoleUpdate,
+#     current_admin: User = Depends(get_current_admin),
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     # TODO: Реализовать смену роли
+#     # Пока просто заглушка
+#     return MessageResponse(message=f"Роль пользователя изменена на {data.role.value}")
 
 
 @app.post("/api/v1/admin/categories", response_model=CategoryResponse)

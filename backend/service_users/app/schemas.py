@@ -105,7 +105,7 @@ class AdCreate(BaseModel):
     category_ids: List[int] = Field(..., min_length=1)
     emodzi_id: Optional[int] = None
     prioritet: int = Field(default=0, ge=0)
-
+    
 
 class AdUpdate(BaseModel):
     title: Optional[str] = None
@@ -128,7 +128,7 @@ class AdResponse(BaseModel):
     address: str
     end_date: datetime
     clicks_count: int
-    partner_id: int
+    partner_email: str
     partner_name: str
     categories: List[str]
     is_favorite: Optional[bool] = False
@@ -176,6 +176,7 @@ class FavoriteListResponse(BaseModel):
 
 class PartnerResponse(BaseModel):
     id: int
+    email: str
     company_name: str
     description: Optional[str]
     logo_url: Optional[str]
@@ -213,7 +214,7 @@ class PartnerRequestCreate(BaseModel):
 
 class PartnerRequestResponse(BaseModel):
     id: int
-    user_id: int
+    user_email: str
     company_name: str
     contact_person: str
     phone: str
