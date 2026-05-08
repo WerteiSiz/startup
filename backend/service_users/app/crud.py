@@ -34,14 +34,14 @@ async def create_user(
 
 async def get_user(db: AsyncSession, user_id: int) -> Optional[User]:
     result = await db.execute(
-        select(User).where(User.id == user_id, User.is_active == True)
+        select(User).where(User.id == user_id)
     )
     return result.scalar_one_or_none()
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
     result = await db.execute(
-        select(User).where(User.email == email, User.is_active == True)
+        select(User).where(User.email == email)
     )
     return result.scalar_one_or_none()
 
@@ -95,6 +95,27 @@ async def soft_delete_user(db: AsyncSession, user_id: int) -> Optional[User]:
         await db.commit()
         await db.refresh(user)
     return user
+
+
+async def recover_account(db: AsyncSession, user_id: int) -> Optional[User]:
+    """Восстановление аккаунта — помечаем пользователя как is_active=True"""
+    user = await get_user(db, user_id)
+    if user:
+        user.is_active = True
+        user.deleted_at = None
+
+        await db.commit()
+        await db.refresh(user)
+    return user
+
+
+async def admin_delete_user(db: AsyncSession, user_id: int) -> bool:
+    """Полное удаление любого юзера"""
+    
+    await db.execute(
+        delete(User).where(User.id == user_id)
+    )
+    await db.commit()
 
 
 # ==================== Email Verification ====================

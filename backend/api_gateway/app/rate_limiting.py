@@ -55,6 +55,7 @@ async def rate_limit_middleware(request: Request, call_next):
     # Проверяем, нужно ли ограничивать этот путь
     if not should_rate_limit(request):
         return await call_next(request)
+    
     if should_rate_limit(request):
         return await call_next(request)
     

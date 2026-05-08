@@ -289,6 +289,9 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     user = await crud.get_user_by_email(db, data.email)
+    if user.is_active == False:
+        raise HTTPException(status_code=401, detail="Этот аккаунт является удаленным")
+    
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Неверный email или пароль")
     
@@ -333,12 +336,35 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 @app.delete("/api/v1/auth/me", response_model=MessageResponse)
 async def delete_me(
+    data: UserLogin,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    
+    user = await crud.get_user_by_email(db, data.email)
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+    
+
     await crud.soft_delete_user(db, current_user.id)
     return MessageResponse(message="Аккаунт удалён. Данные будут храниться 3 месяца")
 
+
+@app.post("/api/v1/auth/recover_account", response_model=MessageResponse)
+async def recover_account(
+    data: UserLogin,
+    db: AsyncSession = Depends(get_db)
+):
+    user = await crud.get_user_by_email(db, data.email)
+    if user.is_active == True: 
+        return MessageResponse(message='На данный момент аккаунт не является удаленным!')
+    
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Неверный email или пароль")
+    
+    
+    await crud.recover_account(db, user.id)
+    return MessageResponse(message='Аккаунт восстановлен!')
 
 # ==================== Ads Routes ====================
 
@@ -789,16 +815,16 @@ async def get_users(
     )
 
 
-# @app.put("/api/v1/admin/users/{user_id}/role", response_model=MessageResponse)
-# async def change_user_role(
-#     user_id: int,
-#     data: AdminUserRoleUpdate,
-#     current_admin: User = Depends(get_current_admin),
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     # TODO: Реализовать смену роли
-#     # Пока просто заглушка
-#     return MessageResponse(message=f"Роль пользователя изменена на {data.role.value}")
+@app.delete("/api/v1/admin/users/{user_id}", response_model=MessageResponse)
+async def change_user_role(
+    user_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db)
+):
+    
+    await crud.admin_delete_user(db, user_id)
+
+    return MessageResponse(message=f"Пользователь был полностью удален")
 
 
 @app.post("/api/v1/admin/categories", response_model=CategoryResponse)
