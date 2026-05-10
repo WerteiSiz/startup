@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useAdminPartnerModals } from '../../composables/useAdminPartnerModals'
-import { getAdminUsers } from '../../services/adminService'
+import { deleteAdminUser, getAdminUsers } from '../../services/adminService'
 import { apiRequest } from '../../services/apiClient'
 
 const { openAddManager, openCreateCompany } = useAdminPartnerModals()
@@ -28,11 +28,17 @@ async function loadData() {
 
   partnerCompaniesTable.value = (partnersResponse || []).map((row) => ({
     company: row.company_name,
-    email: '—',
+    email: row.email || '—',
     manager: 'Партнер',
     discounts: row.ads_count || 0,
     clicks: '—',
   }))
+}
+
+async function handleDeleteManager(userId) {
+  if (!window.confirm('Удалить пользователя?')) return
+  await deleteAdminUser(userId)
+  await loadData()
 }
 
 onMounted(() => {
@@ -66,7 +72,14 @@ onMounted(() => {
           <h2>{{ m.name }}</h2>
           <div class="admin-manager-tools">
             <button type="button" class="admin-icon-btn" aria-label="Редактировать">✎</button>
-            <button type="button" class="admin-icon-btn admin-icon-btn--danger" aria-label="Удалить">🗑</button>
+            <button
+              type="button"
+              class="admin-icon-btn admin-icon-btn--danger"
+              aria-label="Удалить"
+              @click="handleDeleteManager(m.id)"
+            >
+              🗑
+            </button>
           </div>
         </div>
         <p class="admin-manager-meta">{{ m.email }} · {{ m.phone }}</p>

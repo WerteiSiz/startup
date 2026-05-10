@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getPartnerRequests, updatePartnerRequest } from '../../services/adminService'
+import { approvePartnerRequest, getPartnerRequests } from '../../services/adminService'
 
 const filter = ref('all')
 const applications = ref([])
@@ -39,11 +39,12 @@ async function loadApplications() {
   const response = await getPartnerRequests({ limit: 100 })
   applications.value = (response?.items || []).map((item) => ({
     id: String(item.id),
+    userEmail: item.user_email,
     company: item.company_name,
     status: item.status,
     contact: item.contact_person,
     position: '—',
-    email: '—',
+    email: item.user_email || '—',
     phone: item.phone,
     offer: item.description || 'Описание не указано',
     submitted: formatDate(item.created_at),
@@ -52,8 +53,8 @@ async function loadApplications() {
   }))
 }
 
-async function resolveRequest(id, status) {
-  await updatePartnerRequest(id, { status })
+async function approveRequest(application) {
+  await approvePartnerRequest(application.userEmail)
   await loadApplications()
 }
 
@@ -98,11 +99,8 @@ onMounted(() => {
             <span class="admin-badge" :class="statusClass(app.status)">{{ statusLabel(app.status) }}</span>
           </div>
           <div v-if="app.status === 'pending'" class="admin-app-actions">
-            <button type="button" class="admin-btn admin-btn--ok" @click="resolveRequest(app.id, 'approved')">
+            <button type="button" class="admin-btn admin-btn--ok" @click="approveRequest(app)">
               ✓ Одобрить
-            </button>
-            <button type="button" class="admin-btn admin-btn--bad" @click="resolveRequest(app.id, 'rejected')">
-              ✕ Отклонить
             </button>
           </div>
         </div>

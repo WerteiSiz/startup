@@ -78,7 +78,6 @@ export function useSession() {
     if (partner) {
       await registerPartner({
         email: String(email || '').trim(),
-        password,
         full_name: String(name || '').trim(),
         company_name: String(companyName || '').trim() || 'Компания',
         phone: String(phone || '').trim() || '+7 (000) 000-00-00',
